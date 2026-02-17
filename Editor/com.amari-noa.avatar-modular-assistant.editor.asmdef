@@ -1,0 +1,16 @@
+{
+    "name": "com.amari-noa.avatar-modular-assistant.editor",
+    "rootNamespace": "com.amari-noa.avatar-modular-assistant.editor",
+    "references": [],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
