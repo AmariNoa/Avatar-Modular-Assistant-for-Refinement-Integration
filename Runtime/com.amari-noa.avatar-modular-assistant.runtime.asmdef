@@ -1,6 +1,6 @@
 {
     "name": "com.amari-noa.avatar-modular-assistant.runtime",
-    "rootNamespace": "com.amari-noa.avatar-modular-assistant.runtime",
+    "rootNamespace": "com.amari_noa.avatar_modular_assistant.runtime",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],

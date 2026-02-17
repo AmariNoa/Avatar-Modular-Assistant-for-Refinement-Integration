@@ -1,7 +1,9 @@
 {
     "name": "com.amari-noa.avatar-modular-assistant.editor",
-    "rootNamespace": "com.amari-noa.avatar-modular-assistant.editor",
-    "references": [],
+    "rootNamespace": "com.amari_noa.avatar_modular_assistant.editor",
+    "references": [
+        "GUID:2d508b1091d66904ea58f954df25ba7e"
+    ],
     "includePlatforms": [
         "Editor"
     ],
