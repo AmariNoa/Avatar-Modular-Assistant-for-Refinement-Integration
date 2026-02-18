@@ -1,12 +1,23 @@
-<?xml version="1.0" encoding="utf-8"?>
-<engine:UXML
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xmlns:engine="UnityEngine.UIElements"
-    xmlns:editor="UnityEditor.UIElements"
-    xsi:noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd"
->
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
     <Style src="project://database/Packages/com.amari-noa.avatar-modular-assistant/Editor/AvatarCustomize/AmariAvatarCustomizeWindow.uss?fileID=7433441132597879392&amp;guid=381268753b4dbee4e87b4d1820e01c34&amp;type=3#AmariAvatarCustomizeWindow" />
-	<engine:Label text="Hello World! From UXML" />
-	<engine:Label class="custom-label" text="Hello World! With Style" />
-
-</engine:UXML>
+    <ui:VisualElement name="SelectLanguagePanel" style="flex-grow: 1; max-height: 45px; margin-top: 10px; margin-right: 10px; margin-bottom: 10px; margin-left: 10px;">
+        <ui:DropdownField label="Language: " name="EditorLanguage" />
+    </ui:VisualElement>
+    <ui:VisualElement name="AvatarDetailsPanel" style="flex-grow: 1; min-height: 80px; flex-direction: row; max-height: 80px;">
+        <ui:VisualElement name="AvatarThumbnail" style="flex-grow: 1; min-height: 60px; min-width: 80px; max-width: 80px; max-height: 60px; margin-top: 10px; margin-right: 10px; margin-bottom: 10px; margin-left: 10px;" />
+        <ui:Label tabindex="-1" text="Avatar:" parse-escape-sequences="true" display-tooltip-when-elided="true" />
+        <ui:Label tabindex="-1" parse-escape-sequences="true" display-tooltip-when-elided="true" name="AvatarName" />
+    </ui:VisualElement>
+    <ui:VisualElement name="SubPanel" style="flex-grow: 1; max-height: 15%; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px;">
+        <ui:Label tabindex="-1" text="SubPanel" parse-escape-sequences="true" display-tooltip-when-elided="true" />
+    </ui:VisualElement>
+    <ui:VisualElement name="MainPanel" style="flex-grow: 1; flex-direction: row; max-width: none; max-height: none;">
+        <ui:VisualElement name="CostumeListPanel" style="flex-grow: 1; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px;">
+            <ui:Label tabindex="-1" text="Costume List" parse-escape-sequences="true" display-tooltip-when-elided="true" name="CostumePanelTitle" />
+            <ui:ListView name="CostumeListView" show-border="true" reorderable="true" show-foldout-header="false" show-add-remove-footer="true" />
+        </ui:VisualElement>
+        <ui:VisualElement name="InspectorPanel" style="flex-grow: 1; max-width: 50%; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px;">
+            <ui:Label tabindex="-1" text="Inspector" parse-escape-sequences="true" display-tooltip-when-elided="true" name="InspectorTitle" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
