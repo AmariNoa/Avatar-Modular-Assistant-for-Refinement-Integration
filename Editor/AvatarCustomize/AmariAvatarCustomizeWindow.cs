@@ -169,6 +169,52 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             item.instance = instance;
         }
 
+
+        private void OnActivePreviewCostumeDestroy(AmariCostumeListItem item)
+        {
+            if (_avatarSettings.CostumeListItems.Count == 0 || (_avatarSettings.CostumeListItems.Count == 1 && _avatarSettings.CostumeListItems[0] == item))
+            {
+                // 要素数が0、または削除対象しか無いならアクティブに出来るものがない
+                _avatarSettings.activePreviewCostume = null;
+                UpdatePreviewInstanceActiveStates();
+                return;
+            }
+
+            // 削除対象の要素を除いたリストの一番上をアクティブとして扱う
+            var next = _avatarSettings.CostumeListItems.FirstOrDefault(ti => ti != item && ti != null && ti.instance);
+            _avatarSettings.activePreviewCostume = next;
+            UpdatePreviewInstanceActiveStates();
+        }
+
+        private bool CheckOrActivatePreviewCostume(AmariCostumeListItem item)
+        {
+            if (_avatarSettings.activePreviewCostume != null)
+            {
+                // アクティブが存在してもリスト外・実体無しなら無効化
+                var active = _avatarSettings.activePreviewCostume;
+                if (_avatarSettings.CostumeListItems.Contains(active) && active.instance)
+                {
+                    return false;
+                }
+
+                _avatarSettings.activePreviewCostume = null;
+            }
+
+            // アクティブが存在しなければ更新アイテムをアクティブとして扱う
+            _avatarSettings.activePreviewCostume = item;
+            UpdatePreviewInstanceActiveStates();
+            return true;
+        }
+
+        private void UpdatePreviewInstanceActiveStates()
+        {
+            var active = _avatarSettings.activePreviewCostume;
+            foreach (var item in _avatarSettings.CostumeListItems.Where(item => item?.instance != null))
+            {
+                item.instance.SetActive(item == active);
+            }
+        }
+
         private GameObject UpdatePrefabInstanceInScene(AmariCostumeListItem item, GameObject newPrefab)
         {
             if (item.instance)
@@ -178,6 +224,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             if (!newPrefab)
             {
+                OnActivePreviewCostumeDestroy(item);
                 return null;
             }
 
@@ -194,6 +241,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             var instance = UpdatePrefabInstanceInScene(item, prefab);
             SetCostumeListItemValues(item, prefab, guid, instance);
+
+            instance.SetActive(CheckOrActivatePreviewCostume(item));
 
             _avatarSettings.CostumeListItems.Add(item);
         }
@@ -218,6 +267,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             var instance = UpdatePrefabInstanceInScene(item, prefab);
             SetCostumeListItemValues(item, prefab, newGuid, instance);
+
+            instance.SetActive(CheckOrActivatePreviewCostume(item));
         }
 
         private bool AddCostumePrefab(GameObject obj)
@@ -300,15 +351,6 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 prefabField.RegisterValueChangedCallback(e =>
                 {
                     var newPrefab = e.newValue as GameObject;
-                    /*
-                    if (newPrefab == null)
-                    {
-                        // TODO Resetメソッド等を作って統合すべき？
-                        item.prefab = null;
-                        return;
-                    }
-                    */
-
                     OnCostumePrefabValueChanged(prefabField, item, newPrefab);
                 });
             };
@@ -336,10 +378,13 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     }
 
                     var item = _avatarSettings.CostumeListItems[i];
-                    if (item != null && item.instance)
+                    if (item == null || !item.instance)
                     {
-                        DestroyImmediate(item.instance);
+                        continue;
                     }
+
+                    DestroyImmediate(item.instance);
+                    OnActivePreviewCostumeDestroy(item);
                 }
             };
 
@@ -424,6 +469,11 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 LoadOrCreateAmariSettings(_avatarDescriptor);
             }
 
+            if (_avatarSettings != null)
+            {
+                EnsureActivePreviewCostume();
+            }
+
             var root = rootVisualElement;
 
             VisualElement labelFromUxml = visualTreeAsset.Instantiate();
@@ -451,6 +501,24 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             // CostumeList ----------
             BindCostumeList(root);
             RegisterPrefabDropTargets(root);
+        }
+
+        private void EnsureActivePreviewCostume()
+        {
+            if (_avatarSettings.CostumeListItems == null)
+            {
+                _avatarSettings.activePreviewCostume = null;
+                return;
+            }
+
+            var active = _avatarSettings.activePreviewCostume;
+            if (active == null || !_avatarSettings.CostumeListItems.Contains(active) || active.instance == null)
+            {
+                active = _avatarSettings.CostumeListItems.FirstOrDefault(item => item?.instance != null);
+                _avatarSettings.activePreviewCostume = active;
+            }
+
+            UpdatePreviewInstanceActiveStates();
         }
     }
 }

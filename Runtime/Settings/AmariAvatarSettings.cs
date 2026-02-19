@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using VRC.SDK3.Avatars.Components;
+using UnityEngine.Serialization;
 
 // ReSharper disable once CheckNamespace
 namespace com.amari_noa.avatar_modular_assistant.runtime
@@ -20,7 +20,11 @@ namespace com.amari_noa.avatar_modular_assistant.runtime
 
     public class AmariAvatarSettings : MonoBehaviour
     {
+        // 登録衣装一覧
         [SerializeField, ReadOnly] private List<AmariCostumeListItem> costumeListItems;
         public List<AmariCostumeListItem> CostumeListItems => costumeListItems;
+
+        // アクティブな衣装の記録
+        [ReadOnly] public AmariCostumeListItem activePreviewCostume;
     }
 }
