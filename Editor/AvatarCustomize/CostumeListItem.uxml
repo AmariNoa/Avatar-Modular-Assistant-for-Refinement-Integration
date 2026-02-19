@@ -7,6 +7,5 @@
             <ui:Button text="Preview" parse-escape-sequences="true" display-tooltip-when-elided="true" name="CostumePreviewStatusButton" style="align-self: stretch;" />
         </ui:VisualElement>
         <uie:ObjectField label="Prefab" name="CostumePrefabField" allow-scene-objects="false" style="flex-grow: 1; -unity-text-align: middle-left;" />
-        <ui:FloatField label="Scale multiply" value="1" name="ScaleMultiply" style="-unity-text-align: middle-left; min-width: 200px; max-width: 20%; align-self: stretch;" />
     </ui:VisualElement>
 </ui:UXML>

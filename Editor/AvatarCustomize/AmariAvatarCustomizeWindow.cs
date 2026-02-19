@@ -18,12 +18,16 @@ namespace com.amari_noa.avatar_modular_assistant.editor
     {
         [SerializeField] private VisualTreeAsset visualTreeAsset;
         [Space]
+        [SerializeField] private VisualTreeAsset costumeGroupItemAsset;
         [SerializeField] private VisualTreeAsset costumeItemAsset;
 
         private VRCAvatarDescriptor _avatarDescriptor;
-        //private readonly List<AmariCostumeListItem> _costumeListItems = new();
         private AmariAvatarSettings _avatarSettings;
-        private ListView _costumeListView;
+        private ListView _costumeGroupListView;
+        private readonly Dictionary<ListView, List<AmariCostumeListItem>> _costumeListSnapshots = new();
+        private readonly Dictionary<AmariCostumeGroupListItem, ListView> _groupToListView = new();
+        private readonly Dictionary<ListView, List<AmariCostumeListItem>> _listViewToTargetList = new();
+        private readonly HashSet<VisualElement> _dragTargets = new();
         private static VRCAvatarDescriptor _pendingAvatarDescriptor;
 
         private const string WindowTitle = "[AMARI] Avatar Customize";
@@ -95,14 +99,34 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
 
         #region CostumeList UI controls
+        private static void SetCostumeListItemValues(AmariCostumeListItem item, GameObject prefab, string guid, GameObject instance)
+        {
+            item.prefab = prefab;
+            item.prefabGuid = guid;
+            item.instance = instance;
+        }
+
+        private IEnumerable<AmariCostumeListItem> EnumerateAllCostumeItems()
+        {
+            if (_avatarSettings?.CostumeListGroupItems == null)
+            {
+                yield break;
+            }
+
+            foreach (var item in _avatarSettings.CostumeListGroupItems.Where(group => group?.costumeListItems != null).SelectMany(group => group.costumeListItems.Where(item => item != null)))
+            {
+                yield return item;
+            }
+        }
+
         private bool IsDuplicatePrefab(string guid)
         {
-            return string.IsNullOrWhiteSpace(guid) || _avatarSettings.CostumeListItems.Where(item => item != null).Any(item => string.Equals(item.prefabGuid, guid, System.StringComparison.Ordinal));
+            return string.IsNullOrWhiteSpace(guid) || EnumerateAllCostumeItems().Any(item => string.Equals(item.prefabGuid, guid, System.StringComparison.Ordinal));
         }
 
         private bool IsDuplicatePrefab(string guid, AmariCostumeListItem self)
         {
-            return string.IsNullOrWhiteSpace(guid) || _avatarSettings.CostumeListItems.Where(item => item != null && item != self).Any(item => string.Equals(item.prefabGuid, guid, System.StringComparison.Ordinal));
+            return string.IsNullOrWhiteSpace(guid) || EnumerateAllCostumeItems().Any(item => item != self && string.Equals(item.prefabGuid, guid, System.StringComparison.Ordinal));
         }
 
         private static bool IsPrefabAsset(Object obj)
@@ -115,73 +139,9 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             return EditorUtility.IsPersistent(go) && PrefabUtility.IsPartOfPrefabAsset(go);
         }
 
-        private void RegisterPrefabDropTargets(VisualElement root)
-        {
-            if (_costumeListView == null)
-            {
-                return;
-            }
-
-            var costumeListPanel = root.Q<VisualElement>("CostumeListPanel");
-            RegisterPrefabDropTarget(costumeListPanel);
-
-            var costumeTitleLabel = root.Q<Label>("CostumePanelTitle");
-            RegisterPrefabDropTarget(costumeTitleLabel);
-
-            RegisterPrefabDropTarget(_costumeListView);
-        }
-
-        private void RegisterPrefabDropTarget(VisualElement target)
-        {
-            target.RegisterCallback<DragUpdatedEvent>(_ =>
-            {
-                DragAndDrop.visualMode = CanAcceptPrefabDrag() ? DragAndDropVisualMode.Copy : DragAndDropVisualMode.Rejected;
-            });
-
-            target.RegisterCallback<DragPerformEvent>(_ =>
-            {
-                if (!CanAcceptPrefabDrag())
-                {
-                    DragAndDrop.visualMode = DragAndDropVisualMode.Rejected;
-                    return;
-                }
-
-                DragAndDrop.AcceptDrag();
-                AddPrefabsFromDrag(DragAndDrop.objectReferences);
-            });
-        }
-
-        private static bool CanAcceptPrefabDrag()
-        {
-            var refs = DragAndDrop.objectReferences;
-            if (refs == null || refs.Length == 0)
-            {
-                return false;
-            }
-
-            return refs.Any(IsPrefabAsset);
-        }
-
-        private static void SetCostumeListItemValues(AmariCostumeListItem item, GameObject prefab, string guid, GameObject instance)
-        {
-            item.prefab = prefab;
-            item.prefabGuid = guid;
-            item.instance = instance;
-        }
-
-
         private void OnActivePreviewCostumeDestroy(AmariCostumeListItem item)
         {
-            if (_avatarSettings.CostumeListItems.Count == 0 || (_avatarSettings.CostumeListItems.Count == 1 && _avatarSettings.CostumeListItems[0] == item))
-            {
-                // 要素数が0、または削除対象しか無いならアクティブに出来るものがない
-                _avatarSettings.activePreviewCostume = null;
-                UpdatePreviewInstanceActiveStates();
-                return;
-            }
-
-            // 削除対象の要素を除いたリストの一番上をアクティブとして扱う
-            var next = _avatarSettings.CostumeListItems.FirstOrDefault(ti => ti != item && ti != null && ti.instance);
+            var next = EnumerateAllCostumeItems().FirstOrDefault(ti => ti != item && ti.instance);
             _avatarSettings.activePreviewCostume = next;
             UpdatePreviewInstanceActiveStates();
         }
@@ -192,7 +152,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             {
                 // アクティブが存在してもリスト外・実体無しなら無効化
                 var active = _avatarSettings.activePreviewCostume;
-                if (_avatarSettings.CostumeListItems.Contains(active) && active.instance)
+                if (EnumerateAllCostumeItems().Contains(active) && active.instance)
                 {
                     return false;
                 }
@@ -209,8 +169,13 @@ namespace com.amari_noa.avatar_modular_assistant.editor
         private void UpdatePreviewInstanceActiveStates()
         {
             var active = _avatarSettings.activePreviewCostume;
-            foreach (var item in _avatarSettings.CostumeListItems.Where(item => item?.instance != null))
+            foreach (var item in EnumerateAllCostumeItems())
             {
+                if (item.instance == null)
+                {
+                    continue;
+                }
+
                 item.instance.SetActive(item == active);
             }
         }
@@ -235,7 +200,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             return instance;
         }
 
-        private void OnCostumePrefabAdded(GameObject prefab, string guid)
+        private void OnCostumePrefabAdded(List<AmariCostumeListItem> targetList, GameObject prefab, string guid)
         {
             var item = new AmariCostumeListItem();
 
@@ -244,7 +209,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             instance.SetActive(CheckOrActivatePreviewCostume(item));
 
-            _avatarSettings.CostumeListItems.Add(item);
+            targetList.Add(item);
         }
 
         private void OnCostumePrefabValueChanged(ObjectField prefabField, AmariCostumeListItem item, GameObject prefab)
@@ -271,7 +236,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             instance.SetActive(CheckOrActivatePreviewCostume(item));
         }
 
-        private bool AddCostumePrefab(GameObject obj)
+        private bool AddCostumePrefab(List<AmariCostumeListItem> targetList, GameObject obj)
         {
             if (!IsPrefabAsset(obj))
             {
@@ -285,12 +250,11 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 return false;
             }
 
-            OnCostumePrefabAdded(obj, guid);
-
+            OnCostumePrefabAdded(targetList, obj, guid);
             return true;
         }
 
-        private void AddPrefabsFromDrag(Object[] refs)
+        private void AddPrefabsFromDrag(Object[] refs, List<AmariCostumeListItem> targetList, ListView listView)
         {
             if (refs == null || refs.Length == 0)
             {
@@ -300,7 +264,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             var added = false;
             foreach (var obj in refs)
             {
-                if (!AddCostumePrefab((GameObject)obj))
+                if (!AddCostumePrefab(targetList, (GameObject)obj))
                 {
                     continue;
                 }
@@ -309,86 +273,303 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             if (added)
             {
-                _costumeListView.RefreshItems();
+                listView.RefreshItems();
             }
+        }
+
+        private void RegisterGroupDragTargets(VisualElement target, ListView listView)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            if (_dragTargets.Contains(target))
+            {
+                return;
+            }
+
+            _dragTargets.Add(target);
+
+            target.RegisterCallback<DragUpdatedEvent>(_ =>
+            {
+                DragAndDrop.visualMode = DragAndDrop.objectReferences != null && DragAndDrop.objectReferences.Any(IsPrefabAsset)
+                    ? DragAndDropVisualMode.Copy
+                    : DragAndDropVisualMode.Rejected;
+            });
+
+            target.RegisterCallback<DragPerformEvent>(_ =>
+            {
+                if (DragAndDrop.objectReferences == null || !DragAndDrop.objectReferences.Any(IsPrefabAsset))
+                {
+                    DragAndDrop.visualMode = DragAndDropVisualMode.Rejected;
+                    return;
+                }
+
+                if (!_listViewToTargetList.TryGetValue(listView, out var targetList))
+                {
+                    return;
+                }
+
+                DragAndDrop.AcceptDrag();
+                AddPrefabsFromDrag(DragAndDrop.objectReferences, targetList, listView);
+            });
+        }
+
+        // TODO この命名処理あんまりスマートじゃないのでいつか改修したい
+        private string GetUnusedGroupName(string groupName = "Default")
+        {
+            var exists = _avatarSettings.CostumeListGroupItems.Any(groupInner =>
+                groupInner != null && string.Equals(groupInner.groupName, groupName, System.StringComparison.Ordinal));
+            if (!exists)
+            {
+                return groupName;
+            }
+
+            for (var i = 1; i < int.MaxValue; i++)
+            {
+                var tmpGroupName = $"{groupName} {i}";
+
+                var existsTmp = _avatarSettings.CostumeListGroupItems.Any(groupInner =>
+                    groupInner != null && string.Equals(groupInner.groupName, tmpGroupName, System.StringComparison.Ordinal));
+
+                if (existsTmp)
+                {
+                    continue;
+                }
+
+                return tmpGroupName;
+            }
+
+            // TODO 失敗した時のグループ命名をどうするべきか考える必要がある(そもそもint.MaxValueまで使うことなんて無いはずだけど)
+            return groupName;
         }
 
         private void BindCostumeList(VisualElement root)
         {
-            _costumeListView = root.Q<ListView>("CostumeListView");
+            _costumeGroupListView = root.Q<ListView>("CostumeGroupListView");
+            _costumeGroupListView.itemsSource = _avatarSettings.CostumeListGroupItems;
+            _costumeGroupListView.makeItem = () => costumeGroupItemAsset.Instantiate();
 
-            _costumeListView.itemsSource = _avatarSettings.CostumeListItems;
-            _costumeListView.makeItem = () => costumeItemAsset.Instantiate();
-
-            _costumeListView.bindItem = (element, index) =>
+            _costumeGroupListView.bindItem = (groupElement, groupIndex) =>
             {
-                var item = _avatarSettings.CostumeListItems[index];
-                if (item == null)
-                {
-                    item = new AmariCostumeListItem();
-                    _avatarSettings.CostumeListItems[index] = item;
-                }
-
-                // 行UXML内の要素を name で参照して反映
-                var prefabField = element.Q<ObjectField>("CostumePrefabField");
-                if (prefabField == null)
-                {
-                    Debug.LogError("PrefabField not found in costume item UXML");
-                    return;
-                }
-
-                prefabField.objectType = typeof(GameObject);
-                prefabField.allowSceneObjects = false;
-                prefabField.SetValueWithoutNotify(item.prefab);
-                if (prefabField.userData != null)
+                if (groupIndex < 0 || groupIndex >= _avatarSettings.CostumeListGroupItems.Count)
                 {
                     return;
                 }
 
-                // TODO これ何？
-                prefabField.userData = "bound";
-
-                prefabField.RegisterValueChangedCallback(e =>
+                var group = _avatarSettings.CostumeListGroupItems[groupIndex];
+                if (group == null)
                 {
-                    var newPrefab = e.newValue as GameObject;
-                    OnCostumePrefabValueChanged(prefabField, item, newPrefab);
-                });
+                    group = new AmariCostumeGroupListItem
+                    {
+                        groupName = GetUnusedGroupName(),
+                        costumeListItems = new List<AmariCostumeListItem>()
+                    };
+                    _avatarSettings.CostumeListGroupItems[groupIndex] = group;
+                }
+
+                group.costumeListItems ??= new List<AmariCostumeListItem>();
+
+                var costumeGroupName = groupElement.Q<TextField>("CostumeGroupNameField");
+                if (costumeGroupName != null)
+                {
+                    costumeGroupName.SetValueWithoutNotify(group.groupName);
+                    if (costumeGroupName.userData == null)
+                    {
+                        // TODO これ何？
+                        costumeGroupName.userData = "bound";
+                        costumeGroupName.RegisterValueChangedCallback(e =>
+                        {
+                            var desired = e.newValue?.Trim();
+                            if (string.IsNullOrWhiteSpace(desired))
+                            {
+                                desired = "Default";
+                            }
+
+                            if (string.Equals(desired, group.groupName, System.StringComparison.Ordinal))
+                            {
+                                return;
+                            }
+
+                            var uniqueName = GetUnusedGroupName(desired);
+                            group.groupName = uniqueName;
+                            if (!string.Equals(uniqueName, e.newValue, System.StringComparison.Ordinal))
+                            {
+                                costumeGroupName.SetValueWithoutNotify(uniqueName);
+                            }
+                        });
+                    }
+                }
+
+
+                var costumeListView = groupElement.Q<ListView>("CostumeListView");
+                if (costumeListView == null)
+                {
+                    Debug.LogError("CostumeListView not found in CostumeGroupListItem UXML");
+                    return;
+                }
+
+                costumeListView.itemsSource = group.costumeListItems;
+                costumeListView.makeItem = () => costumeItemAsset.Instantiate();
+                _listViewToTargetList[costumeListView] = group.costumeListItems;
+
+                if (costumeListView.userData == null)
+                {
+                    costumeListView.userData = "bound";
+                    _groupToListView[group] = costumeListView;
+
+                    costumeListView.bindItem = (element, index) =>
+                    {
+                        var item = group.costumeListItems[index];
+                        if (item == null)
+                        {
+                            item = new AmariCostumeListItem();
+                            group.costumeListItems[index] = item;
+                        }
+
+                        var prefabField = element.Q<ObjectField>("CostumePrefabField");
+                        if (prefabField == null)
+                        {
+                            Debug.LogError("PrefabField not found in costume item UXML");
+                            return;
+                        }
+
+                        prefabField.objectType = typeof(GameObject);
+                        prefabField.allowSceneObjects = false;
+                        prefabField.SetValueWithoutNotify(item.prefab);
+                        if (prefabField.userData != null)
+                        {
+                            return;
+                        }
+
+                        prefabField.userData = "bound";
+                        prefabField.RegisterValueChangedCallback(e =>
+                        {
+                            var newPrefab = e.newValue as GameObject;
+                            OnCostumePrefabValueChanged(prefabField, item, newPrefab);
+                        });
+                    };
+
+                    costumeListView.itemsAdded += indices =>
+                    {
+                        foreach (var i in indices)
+                        {
+                            EnsureListSize(group.costumeListItems, i);
+                            group.costumeListItems[i] ??= new AmariCostumeListItem();
+                        }
+
+                        _costumeListSnapshots[costumeListView] = group.costumeListItems.ToList();
+                    };
+
+                    costumeListView.itemsRemoved += indices =>
+                    {
+                        if (!_costumeListSnapshots.TryGetValue(costumeListView, out var snapshot))
+                        {
+                            snapshot = group.costumeListItems.ToList();
+                        }
+
+                        foreach (var i in indices)
+                        {
+                            if (i < 0 || i >= snapshot.Count)
+                            {
+                                continue;
+                            }
+
+                            var item = snapshot[i];
+                            if (item == null || !item.instance)
+                            {
+                                continue;
+                            }
+
+                            DestroyImmediate(item.instance);
+                            if (_avatarSettings.activePreviewCostume == item)
+                            {
+                                OnActivePreviewCostumeDestroy(item);
+                            }
+                        }
+
+                        _costumeListSnapshots[costumeListView] = group.costumeListItems.ToList();
+                    };
+
+                    RegisterGroupDragTargets(costumeListView, costumeListView);
+                }
+
+                // 各ListItemに実体インスタンスが存在するかチェックして、存在しないものはリストから消す
+                group.costumeListItems.RemoveAll(item => item?.instance == null);
+                _costumeListSnapshots[costumeListView] = group.costumeListItems.ToList();
+                costumeListView.Rebuild();
+
+                RegisterGroupDragTargets(groupElement, costumeListView);
             };
 
-            // 各ListItemに実体インスタンスが存在するかチェックして、存在しないものはリストから消す
-            _avatarSettings.CostumeListItems.RemoveAll(item => item?.instance == null);
-
-            _costumeListView.itemsAdded += indices =>
+            _costumeGroupListView.itemsAdded += indices =>
             {
-                // ListItem自体がnullになることは許容しない
                 foreach (var i in indices)
                 {
-                    _avatarSettings.CostumeListItems[i] ??= new AmariCostumeListItem();
+                    EnsureListSize(_avatarSettings.CostumeListGroupItems, i);
+                    _avatarSettings.CostumeListGroupItems[i] ??= new AmariCostumeGroupListItem
+                    {
+                        groupName = GetUnusedGroupName(),
+                        costumeListItems = new List<AmariCostumeListItem>()
+                    };
                 }
             };
 
-            _costumeListView.itemsRemoved += indices =>
+            _costumeGroupListView.itemsRemoved += indices =>
             {
-                // リストから要素が消えた時はインスタンスも破棄する
+                var snapshot = _avatarSettings.CostumeListGroupItems.ToList();
                 foreach (var i in indices)
                 {
-                    if (i < 0 || i >= _avatarSettings.CostumeListItems.Count)
+                    if (i < 0 || i >= snapshot.Count)
                     {
                         continue;
                     }
 
-                    var item = _avatarSettings.CostumeListItems[i];
-                    if (item == null || !item.instance)
+                    var group = snapshot[i];
+                    if (group?.costumeListItems == null)
                     {
                         continue;
                     }
 
-                    DestroyImmediate(item.instance);
-                    OnActivePreviewCostumeDestroy(item);
+                    foreach (var item in group.costumeListItems)
+                    {
+                        if (item?.instance)
+                        {
+                            DestroyImmediate(item.instance);
+                        }
+
+                        if (_avatarSettings.activePreviewCostume == item)
+                        {
+                            OnActivePreviewCostumeDestroy(item);
+                        }
+                    }
+
+                    if (!_groupToListView.TryGetValue(group, out var listView))
+                    {
+                        continue;
+                    }
+
+                    _costumeListSnapshots.Remove(listView);
+                    _groupToListView.Remove(group);
+                    _listViewToTargetList.Remove(listView);
                 }
             };
 
-            _costumeListView.Rebuild();
+            _costumeGroupListView.Rebuild();
+        }
+
+        private static void EnsureListSize<T>(List<T> list, int index)
+        {
+            if (list == null || index < 0)
+            {
+                return;
+            }
+
+            while (list.Count <= index)
+            {
+                list.Add(default);
+            }
         }
         #endregion
 
@@ -500,21 +681,20 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             // CostumeList ----------
             BindCostumeList(root);
-            RegisterPrefabDropTargets(root);
         }
 
         private void EnsureActivePreviewCostume()
         {
-            if (_avatarSettings.CostumeListItems == null)
+            if (_avatarSettings.CostumeListGroupItems == null)
             {
                 _avatarSettings.activePreviewCostume = null;
                 return;
             }
 
             var active = _avatarSettings.activePreviewCostume;
-            if (active == null || !_avatarSettings.CostumeListItems.Contains(active) || active.instance == null)
+            if (active == null || !EnumerateAllCostumeItems().Contains(active) || active.instance == null)
             {
-                active = _avatarSettings.CostumeListItems.FirstOrDefault(item => item?.instance != null);
+                active = EnumerateAllCostumeItems().FirstOrDefault(item => item.instance != null);
                 _avatarSettings.activePreviewCostume = active;
             }
 

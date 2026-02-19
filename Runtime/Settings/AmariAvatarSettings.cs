@@ -7,6 +7,13 @@ using UnityEngine.Serialization;
 namespace com.amari_noa.avatar_modular_assistant.runtime
 {
     [Serializable]
+    public class AmariCostumeGroupListItem
+    {
+        public string groupName;
+        public List<AmariCostumeListItem> costumeListItems;
+    }
+
+    [Serializable]
     public class AmariCostumeListItem
     {
         public GameObject prefab;   // 原本プレハブ
@@ -21,8 +28,8 @@ namespace com.amari_noa.avatar_modular_assistant.runtime
     public class AmariAvatarSettings : MonoBehaviour
     {
         // 登録衣装一覧
-        [SerializeField, ReadOnly] private List<AmariCostumeListItem> costumeListItems;
-        public List<AmariCostumeListItem> CostumeListItems => costumeListItems;
+        [SerializeField, ReadOnly] private List<AmariCostumeGroupListItem> costumeListGroupItems;
+        public List<AmariCostumeGroupListItem> CostumeListGroupItems => costumeListGroupItems;
 
         // アクティブな衣装の記録
         [ReadOnly] public AmariCostumeListItem activePreviewCostume;
