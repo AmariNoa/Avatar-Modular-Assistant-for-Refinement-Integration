@@ -100,6 +100,28 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
                 item.instance.SetActive(item == active);
             }
+
+            // Refresh UI so preview buttons reflect current active item
+            if (_outfitGroupListView != null)
+            {
+                _outfitGroupListView.RefreshItems();
+            }
+
+            foreach (var listView in _outfitListSnapshots.Keys)
+            {
+                listView?.RefreshItems();
+            }
+        }
+
+        private static void SetPreviewButtonState(Button button, bool isPreviewing)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            button.text = isPreviewing ? "Previewing" : "Preview";
+            button.style.backgroundColor = isPreviewing ? new StyleColor(Color.green) : new StyleColor(Color.red);
         }
 
         private GameObject UpdatePrefabInstanceInScene(AmariOutfitListItem item, GameObject newPrefab)
@@ -399,6 +421,31 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                             var newPrefab = e.newValue as GameObject;
                             OnOutfitPrefabValueChanged(prefabField, item, newPrefab);
                         });
+
+                        var previewButton = element.Q<Button>("OutfitPreviewStatusButton");
+                        if (previewButton == null)
+                        {
+                            return;
+                        }
+
+                        SetPreviewButtonState(previewButton, _avatarSettings.activePreviewOutfit == item);
+                        if (previewButton.userData != null)
+                        {
+                            return;
+                        }
+
+                        previewButton.userData = "bound";
+                        previewButton.clicked += () =>
+                        {
+                            if (item.instance == null)
+                            {
+                                return;
+                            }
+
+                            _avatarSettings.activePreviewOutfit = item;
+                            UpdatePreviewInstanceActiveStates();
+                            outfitListView.RefreshItems();
+                        };
                     };
 
                     outfitListView.itemsAdded += indices =>
