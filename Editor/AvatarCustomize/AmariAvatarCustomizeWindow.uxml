@@ -1,6 +1,6 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
     <Style src="project://database/Packages/com.amari-noa.avatar-modular-assistant/Editor/AvatarCustomize/AmariAvatarCustomizeWindow.uss?fileID=7433441132597879392&amp;guid=381268753b4dbee4e87b4d1820e01c34&amp;type=3#AmariAvatarCustomizeWindow" />
-    <ui:VisualElement name="SelectLanguagePanel" style="flex-grow: 1; max-height: 45px; margin-top: 10px; margin-right: 10px; margin-bottom: 10px; margin-left: 10px;">
+    <ui:VisualElement name="SelectLanguagePanel" style="flex-grow: 1; max-height: 50px; margin-top: 10px; margin-right: 10px; margin-bottom: 10px; margin-left: 10px;">
         <ui:DropdownField label="Language: " name="EditorLanguage" />
     </ui:VisualElement>
     <ui:VisualElement name="AvatarDetailsPanel" style="flex-grow: 1; min-height: 80px; flex-direction: row; max-height: 80px;">
@@ -12,12 +12,12 @@
         <ui:Label tabindex="-1" text="SubPanel" parse-escape-sequences="true" display-tooltip-when-elided="true" />
     </ui:VisualElement>
     <ui:VisualElement name="MainPanel" style="flex-grow: 1; flex-direction: row; max-width: none; max-height: none;">
-        <ui:VisualElement name="CostumeListPanel" style="flex-grow: 1; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px; max-width: 50%;">
+        <ui:VisualElement name="OutfitListPanel" style="flex-grow: 1; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px; max-width: 50%;">
             <ui:VisualElement style="flex-grow: 1; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px; max-height: 48px;">
-                <ui:Label tabindex="-1" text="Costume List" parse-escape-sequences="true" display-tooltip-when-elided="true" name="CostumePanelTitle" />
+                <ui:Label tabindex="-1" text="Costume List" parse-escape-sequences="true" display-tooltip-when-elided="true" name="OutfitPanelTitle" />
             </ui:VisualElement>
             <ui:VisualElement style="flex-grow: 1; margin-top: 10px; margin-right: 10px; margin-bottom: 10px; margin-left: 10px;">
-                <ui:ListView name="CostumeGroupListView" show-border="true" show-foldout-header="false" show-add-remove-footer="true" virtualization-method="DynamicHeight" />
+                <ui:ListView name="OutfitGroupListView" show-border="true" show-foldout-header="false" show-add-remove-footer="true" virtualization-method="DynamicHeight" />
             </ui:VisualElement>
         </ui:VisualElement>
         <ui:VisualElement name="InspectorPanel" style="flex-grow: 1; max-width: 50%; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px;">
