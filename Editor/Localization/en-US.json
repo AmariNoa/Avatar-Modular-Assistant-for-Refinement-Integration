@@ -3,7 +3,9 @@
   "amari": {
     "window": {
       "avatarCustomize": {
-        "panelOutfitTitle": "Outfit Group List"
+        "panelOutfitTitle": "Outfit Group List",
+        "previewButtonPreview": "Preview",
+        "previewButtonPreviewing": "Previewing"
       }
     }
   }

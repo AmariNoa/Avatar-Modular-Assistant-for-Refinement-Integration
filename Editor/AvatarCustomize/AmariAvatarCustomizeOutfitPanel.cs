@@ -120,8 +120,10 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 return;
             }
 
-            button.text = isPreviewing ? "Previewing" : "Preview";
-            button.style.backgroundColor = isPreviewing ? new StyleColor(Color.green) : new StyleColor(Color.red);
+            button.text = isPreviewing
+                ? AmariLocalization.Get("amari.window.avatarCustomize.previewButtonPreviewing")
+                : AmariLocalization.Get("amari.window.avatarCustomize.previewButtonPreview");
+            button.style.backgroundColor = isPreviewing ? new StyleColor(new Color(0.0f, 0.6f, 0.0f)) : new StyleColor(new Color(0.6f, 0.0f, 0.0f));
         }
 
         private GameObject UpdatePrefabInstanceInScene(AmariOutfitListItem item, GameObject newPrefab)
@@ -351,10 +353,39 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             return groupName;
         }
 
-        private static void SetupLocalizationTextOutfit(VisualElement root)
+        private void SetupLocalizationTextOutfit(VisualElement root)
         {
             var outfitPanelTitle = root.Q<Label>("OutfitPanelTitle");
             outfitPanelTitle.text = AmariLocalization.Get("amari.window.avatarCustomize.panelOutfitTitle");
+
+            var previewButtons = root.Query<Button>("OutfitPreviewStatusButton").ToList();
+            if (previewButtons.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var button in previewButtons)
+            {
+                var isPreviewing = false;
+                var parent = button.parent;
+                while (parent != null)
+                {
+                    var prefabField = parent.Q<ObjectField>("OutfitPrefabField");
+                    if (prefabField != null)
+                    {
+                        var prefab = prefabField.value as GameObject;
+                        if (prefab != null && _avatarSettings != null)
+                        {
+                            isPreviewing = _avatarSettings.activePreviewOutfit != null &&
+                                           _avatarSettings.activePreviewOutfit.prefab == prefab;
+                        }
+                        break;
+                    }
+                    parent = parent.parent;
+                }
+
+                SetPreviewButtonState(button, isPreviewing);
+            }
         }
 
         private void BindOutfitList(VisualElement root)

@@ -5,7 +5,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 {
     public partial class AmariAvatarCustomizeWindow
     {
-        private static void BuildLocalizationPanel(VisualElement root)
+        private void BuildLocalizationPanel(VisualElement root)
         {
             var langDd = root.Q<DropdownField>("EditorLanguage");
             langDd.choices = AmariLocalization.LanguageCodes;
