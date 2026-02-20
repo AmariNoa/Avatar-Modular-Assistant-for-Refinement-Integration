@@ -358,6 +358,12 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             var outfitPanelTitle = root.Q<Label>("OutfitPanelTitle");
             outfitPanelTitle.text = AmariLocalization.Get("amari.window.avatarCustomize.panelOutfitTitle");
 
+            var includeInBuildTitles = root.Query<Label>("IncludeInBuildTitle").ToList();
+            foreach (var title in includeInBuildTitles)
+            {
+                title.text = AmariLocalization.Get("amari.window.avatarCustomize.includeInBuildTitle");
+            }
+
             var previewButtons = root.Query<Button>("OutfitPreviewStatusButton").ToList();
             if (previewButtons.Count == 0)
             {
@@ -549,6 +555,12 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                             UpdatePreviewInstanceActiveStates();
                             outfitListView.RefreshItems();
                         };
+
+                        var includeInBuildTitle = element.Q<Label>("IncludeInBuildTitle");
+                        if (includeInBuildTitle != null)
+                        {
+                            includeInBuildTitle.text = AmariLocalization.Get("amari.window.avatarCustomize.includeInBuildTitle");
+                        }
 
                         var includeInBuildToggle = element.Q<Toggle>("IncludeInBuildToggle");
                         if (includeInBuildToggle != null)

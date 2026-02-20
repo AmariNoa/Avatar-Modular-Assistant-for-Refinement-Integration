@@ -1,11 +1,12 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
     <ui:VisualElement style="flex-grow: 1; align-self: stretch; flex-direction: row; justify-content: space-between;">
-        <ui:VisualElement style="flex-grow: 1; margin-top: 10px; margin-right: 10px; margin-bottom: 10px; margin-left: 10px; max-width: 15%;">
-            <ui:Toggle name="IncludeInBuildToggle" style="-unity-text-align: middle-left;" />
+        <ui:VisualElement style="flex-grow: 1; margin-top: 10px; margin-right: 10px; margin-bottom: 10px; margin-left: 10px; max-width: 130px; align-self: stretch; align-items: center; justify-content: center;">
+            <ui:Label tabindex="-1" text="Include In Build" parse-escape-sequences="true" display-tooltip-when-elided="true" name="IncludeInBuildTitle" />
+            <ui:Toggle name="IncludeInBuildToggle" style="-unity-text-align: middle-left; width: 24px;" />
         </ui:VisualElement>
-        <ui:VisualElement style="flex-grow: 1; margin-top: 10px; margin-right: 10px; margin-bottom: 10px; margin-left: 10px; min-width: 100px; max-width: 100px; align-items: auto;">
-            <ui:Button text="Preview" parse-escape-sequences="true" display-tooltip-when-elided="true" name="OutfitPreviewStatusButton" style="align-self: stretch;" />
+        <ui:VisualElement style="flex-grow: 1; margin-top: 10px; margin-right: 10px; margin-bottom: 10px; margin-left: 10px; min-width: 100px; max-width: 100px; align-items: auto; justify-content: center;">
+            <ui:Button text="Preview" parse-escape-sequences="true" display-tooltip-when-elided="true" name="OutfitPreviewStatusButton" />
         </ui:VisualElement>
-        <uie:ObjectField label="Prefab" name="OutfitPrefabField" allow-scene-objects="false" style="flex-grow: 1; -unity-text-align: middle-left;" />
+        <uie:ObjectField name="OutfitPrefabField" allow-scene-objects="false" style="flex-grow: 1; -unity-text-align: middle-left;" />
     </ui:VisualElement>
 </ui:UXML>

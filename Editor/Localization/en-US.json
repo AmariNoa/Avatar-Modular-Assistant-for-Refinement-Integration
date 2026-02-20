@@ -4,6 +4,7 @@
     "window": {
       "avatarCustomize": {
         "panelOutfitTitle": "Outfit Group List",
+        "includeInBuildTitle": "Include In Build",
         "previewButtonPreview": "Preview",
         "previewButtonPreviewing": "Previewing"
       }

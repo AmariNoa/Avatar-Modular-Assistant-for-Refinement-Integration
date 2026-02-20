@@ -4,6 +4,7 @@
     "window": {
       "avatarCustomize": {
         "panelOutfitTitle": "衣装グループ一覧",
+        "includeInBuildTitle": "ビルドに含める",
         "previewButtonPreview": "プレビュー",
         "previewButtonPreviewing": "プレビュー中"
       }
