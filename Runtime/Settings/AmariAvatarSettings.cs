@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 // ReSharper disable once CheckNamespace
 namespace com.amari_noa.avatar_modular_assistant.runtime
@@ -11,6 +10,7 @@ namespace com.amari_noa.avatar_modular_assistant.runtime
     {
         public string groupName;
         public List<AmariOutfitListItem> outfitListItems;
+        public float scaleMultiply = 1f;
     }
 
     [Serializable]

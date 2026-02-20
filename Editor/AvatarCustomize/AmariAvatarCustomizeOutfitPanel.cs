@@ -150,13 +150,14 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             var instance = UpdatePrefabInstanceInScene(item, prefab);
             SetOutfitListItemValues(item, prefab, guid, instance);
+            ApplyScaleMultiplyToItem(FindOutfitGroupByList(targetList), item);
 
             instance.SetActive(CheckOrActivatePreviewOutfit(item));
 
             targetList.Add(item);
         }
 
-        private void OnOutfitPrefabValueChanged(ObjectField prefabField, AmariOutfitListItem item, GameObject prefab)
+        private void OnOutfitPrefabValueChanged(ObjectField prefabField, AmariOutfitListItem item, GameObject prefab, AmariOutfitGroupListItem group)
         {
             if (!prefab || !IsPrefabAsset(prefab))
             {
@@ -176,8 +177,57 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             var instance = UpdatePrefabInstanceInScene(item, prefab);
             SetOutfitListItemValues(item, prefab, newGuid, instance);
+            ApplyScaleMultiplyToItem(group, item);
 
             instance.SetActive(CheckOrActivatePreviewOutfit(item));
+        }
+
+        private AmariOutfitGroupListItem FindOutfitGroupByList(List<AmariOutfitListItem> targetList)
+        {
+            if (_avatarSettings?.OutfitListGroupItems == null || targetList == null)
+            {
+                return null;
+            }
+
+            foreach (var group in _avatarSettings.OutfitListGroupItems)
+            {
+                if (group?.outfitListItems == targetList)
+                {
+                    return group;
+                }
+            }
+
+            return null;
+        }
+
+        private static void ApplyScaleMultiplyToItem(AmariOutfitGroupListItem group, AmariOutfitListItem item)
+        {
+            if (group == null || item?.instance == null || item.prefab == null)
+            {
+                return;
+            }
+
+            var baseScale = item.prefab.transform.localScale;
+            item.instance.transform.localScale = baseScale * group.scaleMultiply;
+        }
+
+        private static void ApplyScaleMultiplyToGroup(AmariOutfitGroupListItem group)
+        {
+            if (group?.outfitListItems == null)
+            {
+                return;
+            }
+
+            foreach (var item in group.outfitListItems)
+            {
+                if (item?.instance == null || item.prefab == null)
+                {
+                    continue;
+                }
+
+                var baseScale = item.prefab.transform.localScale;
+                item.instance.transform.localScale = baseScale * group.scaleMultiply;
+            }
         }
 
         private bool AddOutfitPrefab(List<AmariOutfitListItem> targetList, GameObject obj)
@@ -221,7 +271,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
         }
 
-        private void RegisterGroupDragTargets(VisualElement target, ListView listView)
+        private void RegisterGroupDragTargets(VisualElement target)
         {
             if (target == null)
             {
@@ -247,6 +297,12 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 if (DragAndDrop.objectReferences == null || !DragAndDrop.objectReferences.Any(IsPrefabAsset))
                 {
                     DragAndDrop.visualMode = DragAndDropVisualMode.Rejected;
+                    return;
+                }
+
+                var listView = target as ListView ?? target.Q<ListView>("OutfitListView");
+                if (listView == null)
+                {
                     return;
                 }
 
@@ -325,7 +381,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     group = new AmariOutfitGroupListItem
                     {
                         groupName = GetUnusedOutfitGroupName(),
-                        outfitListItems = new List<AmariOutfitListItem>()
+                        outfitListItems = new List<AmariOutfitListItem>(),
+                        scaleMultiply = 1f
                     };
                     _avatarSettings.OutfitListGroupItems[groupIndex] = group;
                 }
@@ -370,6 +427,21 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                             }
 
                             CommitOutfitGroupName();
+                        });
+                    }
+                }
+
+                var scaleMultiplyField = groupElement.Q<FloatField>("ScaleMultiply");
+                if (scaleMultiplyField != null)
+                {
+                    scaleMultiplyField.SetValueWithoutNotify(group.scaleMultiply);
+                    if (scaleMultiplyField.userData == null)
+                    {
+                        scaleMultiplyField.userData = "bound";
+                        scaleMultiplyField.RegisterValueChangedCallback(e =>
+                        {
+                            group.scaleMultiply = e.newValue;
+                            ApplyScaleMultiplyToGroup(group);
                         });
                     }
                 }
@@ -419,7 +491,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                         prefabField.RegisterValueChangedCallback(e =>
                         {
                             var newPrefab = e.newValue as GameObject;
-                            OnOutfitPrefabValueChanged(prefabField, item, newPrefab);
+                            OnOutfitPrefabValueChanged(prefabField, item, newPrefab, group);
                         });
 
                         var previewButton = element.Q<Button>("OutfitPreviewStatusButton");
@@ -489,15 +561,16 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                         _outfitListSnapshots[outfitListView] = group.outfitListItems.ToList();
                     };
 
-                    RegisterGroupDragTargets(outfitListView, outfitListView);
+                    RegisterGroupDragTargets(outfitListView);
                 }
 
                 // 各ListItemに実体インスタンスが存在するかチェックして、存在しないものはリストから消す
                 group.outfitListItems.RemoveAll(item => item?.instance == null);
+                ApplyScaleMultiplyToGroup(group);
                 _outfitListSnapshots[outfitListView] = group.outfitListItems.ToList();
                 outfitListView.Rebuild();
 
-                RegisterGroupDragTargets(groupElement, outfitListView);
+                RegisterGroupDragTargets(groupElement);
             };
 
             _outfitGroupListView.itemsAdded += indices =>
@@ -508,7 +581,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     _avatarSettings.OutfitListGroupItems[i] ??= new AmariOutfitGroupListItem
                     {
                         groupName = GetUnusedOutfitGroupName(),
-                        outfitListItems = new List<AmariOutfitListItem>()
+                        outfitListItems = new List<AmariOutfitListItem>(),
+                        scaleMultiply = 1f
                     };
                 }
             };
