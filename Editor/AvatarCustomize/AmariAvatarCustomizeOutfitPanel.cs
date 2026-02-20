@@ -443,10 +443,28 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             var outfitPanelTitle = root.Q<Label>("OutfitPanelTitle");
             outfitPanelTitle.text = AmariLocalization.Get("amari.window.avatarCustomize.panelOutfitTitle");
 
-            var includeInBuildTitles = root.Query<Label>("IncludeInBuildTitle").ToList();
-            foreach (var title in includeInBuildTitles)
+            var editorLanguage = root.Q<DropdownField>("EditorLanguage");
+            if (editorLanguage != null)
             {
-                title.text = AmariLocalization.Get("amari.window.avatarCustomize.includeInBuildTitle");
+                editorLanguage.label = AmariLocalization.Get("amari.window.avatarCustomize.editorLanguageLabel");
+            }
+
+            var outfitGroupNameFields = root.Query<TextField>("OutfitGroupNameField").ToList();
+            foreach (var field in outfitGroupNameFields)
+            {
+                field.label = AmariLocalization.Get("amari.window.avatarCustomize.outfitGroupNameLabel");
+            }
+
+            var scaleMultiplyFields = root.Query<FloatField>("ScaleMultiply").ToList();
+            foreach (var field in scaleMultiplyFields)
+            {
+                field.label = AmariLocalization.Get("amari.window.avatarCustomize.scaleMultiplyLabel");
+            }
+
+            var includeInBuildTitles = root.Query<Label>("IncludeInBuildTitle").ToList();
+            foreach (var ibTitle in includeInBuildTitles)
+            {
+                ibTitle.text = AmariLocalization.Get("amari.window.avatarCustomize.includeInBuildTitle");
             }
 
             var previewButtons = root.Query<Button>("OutfitPreviewStatusButton").ToList();
@@ -512,9 +530,9 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
                 group.outfitListItems ??= new List<AmariOutfitListItem>();
 
-                var outfitGroupName = groupElement.Q<TextField>("OutfitGroupNameField");
-                if (outfitGroupName != null)
-                {
+                        var outfitGroupName = groupElement.Q<TextField>("OutfitGroupNameField");
+                        if (outfitGroupName != null)
+                        {
                     if (string.IsNullOrWhiteSpace(group.groupName))
                     {
                         RecordSettingsUndo("Fix Empty Outfit Group Name");
@@ -522,10 +540,11 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                         MarkSettingsDirty();
                     }
 
-                    outfitGroupName.SetValueWithoutNotify(group.groupName);
-                    if (outfitGroupName.userData == null)
-                    {
-                        outfitGroupName.userData = "bound";
+                            outfitGroupName.label = AmariLocalization.Get("amari.window.avatarCustomize.outfitGroupNameLabel");
+                            outfitGroupName.SetValueWithoutNotify(group.groupName);
+                            if (outfitGroupName.userData == null)
+                            {
+                                outfitGroupName.userData = "bound";
 
                         void CommitOutfitGroupName()
                         {
@@ -565,12 +584,13 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     }
                 }
 
-                var scaleMultiplyField = groupElement.Q<FloatField>("ScaleMultiply");
-                if (scaleMultiplyField != null)
-                {
-                    scaleMultiplyField.SetValueWithoutNotify(group.scaleMultiply);
-                    if (scaleMultiplyField.userData == null)
-                    {
+                        var scaleMultiplyField = groupElement.Q<FloatField>("ScaleMultiply");
+                        if (scaleMultiplyField != null)
+                        {
+                            scaleMultiplyField.label = AmariLocalization.Get("amari.window.avatarCustomize.scaleMultiplyLabel");
+                            scaleMultiplyField.SetValueWithoutNotify(group.scaleMultiply);
+                            if (scaleMultiplyField.userData == null)
+                            {
                         scaleMultiplyField.userData = "bound";
                         scaleMultiplyField.RegisterValueChangedCallback(e =>
                         {

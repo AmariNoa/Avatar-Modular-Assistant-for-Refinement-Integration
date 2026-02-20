@@ -12,6 +12,12 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             langDd.SetValueWithoutNotify(AmariLocalization.CurrentLanguageCode);
             langDd.RegisterValueChangedCallback(e =>
             {
+                if (!AmariLocalization.LanguageCodes.Contains(e.newValue))
+                {
+                    langDd.SetValueWithoutNotify(AmariLocalization.CurrentLanguageCode);
+                    return;
+                }
+
                 AmariLocalization.LoadLanguage(e.newValue);
                 SetupLocalizationTextOutfit(root);  // Outfit panel
             });

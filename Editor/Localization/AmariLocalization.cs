@@ -41,6 +41,12 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             if (string.IsNullOrWhiteSpace(languageCode))
                 languageCode = DefaultLanguageCode;
 
+            if (LanguageCodes.Count > 0 && !LanguageCodes.Contains(languageCode))
+            {
+                Debug.LogWarning($"[AMARI] Unknown language code: {languageCode}");
+                languageCode = DefaultLanguageCode;
+            }
+
             var path = Path.Combine(LocalizationDirRoot, $"{languageCode}.json");
             var text = LoadTextFromPackagePath(path);
             if (text == null)

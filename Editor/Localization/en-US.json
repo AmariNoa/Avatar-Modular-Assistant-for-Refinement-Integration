@@ -4,7 +4,10 @@
     "window": {
       "avatarCustomize": {
         "panelOutfitTitle": "Outfit Group List",
+        "editorLanguageLabel": "Language:",
         "includeInBuildTitle": "Include In Build",
+        "outfitGroupNameLabel": "Outfit Group Name",
+        "scaleMultiplyLabel": "Scale Multiply",
         "previewButtonPreview": "Preview",
         "previewButtonPreviewing": "Previewing"
       }
