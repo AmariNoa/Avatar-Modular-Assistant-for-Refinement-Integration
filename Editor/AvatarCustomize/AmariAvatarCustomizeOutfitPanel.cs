@@ -61,14 +61,24 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             return string.IsNullOrWhiteSpace(guid) || EnumerateAllOutfitItems().Any(item => item != self && string.Equals(item.prefabGuid, guid, System.StringComparison.Ordinal));
         }
 
-        private void OnActivePreviewOutfitDestroy(AmariOutfitListItem item)
+        private void OnActivePreviewOutfitDestroy(AmariOutfitListItem item, bool registerUndo = false, string undoName = null)
         {
+            if (registerUndo)
+            {
+                RecordSettingsUndo(undoName ?? "Change Active Preview Outfit");
+            }
+
             var next = EnumerateAllOutfitItems().FirstOrDefault(ti => ti != item && ti.instance);
             _avatarSettings.activePreviewOutfit = next;
-            UpdatePreviewInstanceActiveStates();
+            UpdatePreviewInstanceActiveStates(registerUndo, undoName);
+
+            if (registerUndo)
+            {
+                MarkSettingsDirty();
+            }
         }
 
-        private bool CheckOrActivatePreviewOutfit(AmariOutfitListItem item)
+        private bool CheckOrActivatePreviewOutfit(AmariOutfitListItem item, bool registerUndo = false, string undoName = null)
         {
             if (_avatarSettings.activePreviewOutfit != null)
             {
@@ -83,12 +93,23 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
 
             // アクティブが存在しなければ更新アイテムをアクティブとして扱う
+            if (registerUndo)
+            {
+                RecordSettingsUndo(undoName ?? "Change Active Preview Outfit");
+            }
+
             _avatarSettings.activePreviewOutfit = item;
-            UpdatePreviewInstanceActiveStates();
+            UpdatePreviewInstanceActiveStates(registerUndo, undoName);
+
+            if (registerUndo)
+            {
+                MarkSettingsDirty();
+            }
+
             return true;
         }
 
-        private void UpdatePreviewInstanceActiveStates()
+        private void UpdatePreviewInstanceActiveStates(bool registerUndo = false, string undoName = null)
         {
             var active = _avatarSettings.activePreviewOutfit;
             foreach (var item in EnumerateAllOutfitItems())
@@ -96,6 +117,12 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 if (item.instance == null)
                 {
                     continue;
+                }
+
+                if (registerUndo)
+                {
+                    Undo.RecordObject(item.instance, undoName ?? "Toggle Preview Outfit");
+                    MarkObjectDirty(item.instance);
                 }
 
                 item.instance.SetActive(item == active);
@@ -126,16 +153,43 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             button.style.backgroundColor = isPreviewing ? new StyleColor(new Color(0.0f, 0.6f, 0.0f)) : new StyleColor(new Color(0.6f, 0.0f, 0.0f));
         }
 
-        private GameObject UpdatePrefabInstanceInScene(AmariOutfitListItem item, GameObject newPrefab)
+        private static void SetInstanceActive(GameObject instance, bool isActive, bool registerUndo, string undoName)
+        {
+            if (instance == null)
+            {
+                return;
+            }
+
+            if (registerUndo)
+            {
+                Undo.RecordObject(instance, undoName ?? "Toggle Preview Outfit");
+            }
+
+            instance.SetActive(isActive);
+
+            if (registerUndo)
+            {
+                MarkObjectDirty(instance);
+            }
+        }
+
+        private GameObject UpdatePrefabInstanceInScene(AmariOutfitListItem item, GameObject newPrefab, bool registerUndo = false, string undoName = null)
         {
             if (item.instance)
             {
-                DestroyImmediate(item.instance);
+                if (registerUndo)
+                {
+                    Undo.DestroyObjectImmediate(item.instance);
+                }
+                else
+                {
+                    DestroyImmediate(item.instance);
+                }
             }
 
             if (!newPrefab)
             {
-                OnActivePreviewOutfitDestroy(item);
+                OnActivePreviewOutfitDestroy(item, registerUndo, undoName);
                 return null;
             }
 
@@ -143,29 +197,42 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             instance.name = newPrefab.name;
             instance.tag = "EditorOnly";
 
+            if (registerUndo)
+            {
+                Undo.RegisterCreatedObjectUndo(instance, undoName ?? "Create Outfit Prefab");
+                MarkObjectDirty(instance);
+            }
+
             return instance;
         }
 
         private void OnOutfitPrefabAdded(List<AmariOutfitListItem> targetList, GameObject prefab, string guid)
         {
+            RecordSettingsUndo("Add Outfit Prefab");
+
             var item = new AmariOutfitListItem();
 
-            var instance = UpdatePrefabInstanceInScene(item, prefab);
+            var instance = UpdatePrefabInstanceInScene(item, prefab, true, "Create Outfit Prefab");
             SetOutfitListItemValues(item, prefab, guid, instance);
-            ApplyScaleMultiplyToItem(FindOutfitGroupByList(targetList), item);
+            ApplyScaleMultiplyToItem(FindOutfitGroupByList(targetList), item, true, "Apply Outfit Scale");
 
-            instance.SetActive(CheckOrActivatePreviewOutfit(item));
+            var shouldActivate = CheckOrActivatePreviewOutfit(item, true, "Change Active Preview Outfit");
+            SetInstanceActive(instance, shouldActivate, true, "Change Active Preview Outfit");
 
             targetList.Add(item);
+            MarkSettingsDirty();
         }
 
         private void OnOutfitPrefabValueChanged(ObjectField prefabField, AmariOutfitListItem item, GameObject prefab, AmariOutfitGroupListItem group)
         {
+            RecordSettingsUndo("Change Outfit Prefab");
+
             if (!prefab || !IsPrefabAsset(prefab))
             {
                 // TODO 要挙動チェック 警告ダイアログを出す必要があるかも？
                 prefabField.SetValueWithoutNotify(null);
                 SetOutfitListItemValues(item, null, string.Empty, null);
+                MarkSettingsDirty();
                 return;
             }
 
@@ -177,11 +244,13 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 return;
             }
 
-            var instance = UpdatePrefabInstanceInScene(item, prefab);
+            var instance = UpdatePrefabInstanceInScene(item, prefab, true, "Change Outfit Prefab");
             SetOutfitListItemValues(item, prefab, newGuid, instance);
-            ApplyScaleMultiplyToItem(group, item);
+            ApplyScaleMultiplyToItem(group, item, true, "Apply Outfit Scale");
 
-            instance.SetActive(CheckOrActivatePreviewOutfit(item));
+            var shouldActivate = CheckOrActivatePreviewOutfit(item, true, "Change Active Preview Outfit");
+            SetInstanceActive(instance, shouldActivate, true, "Change Active Preview Outfit");
+            MarkSettingsDirty();
         }
 
         private AmariOutfitGroupListItem FindOutfitGroupByList(List<AmariOutfitListItem> targetList)
@@ -202,7 +271,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             return null;
         }
 
-        private static void ApplyScaleMultiplyToItem(AmariOutfitGroupListItem group, AmariOutfitListItem item)
+        private static void ApplyScaleMultiplyToItem(AmariOutfitGroupListItem group, AmariOutfitListItem item, bool registerUndo = false, string undoName = null)
         {
             if (group == null || item?.instance == null || item.prefab == null)
             {
@@ -210,10 +279,18 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
 
             var baseScale = item.prefab.transform.localScale;
+            if (registerUndo)
+            {
+                Undo.RecordObject(item.instance.transform, undoName ?? "Apply Outfit Scale");
+            }
             item.instance.transform.localScale = baseScale * group.scaleMultiply;
+            if (registerUndo)
+            {
+                MarkObjectDirty(item.instance.transform);
+            }
         }
 
-        private static void ApplyScaleMultiplyToGroup(AmariOutfitGroupListItem group)
+        private static void ApplyScaleMultiplyToGroup(AmariOutfitGroupListItem group, bool registerUndo = false, string undoName = null)
         {
             if (group?.outfitListItems == null)
             {
@@ -228,7 +305,15 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 }
 
                 var baseScale = item.prefab.transform.localScale;
+                if (registerUndo)
+                {
+                    Undo.RecordObject(item.instance.transform, undoName ?? "Apply Outfit Scale");
+                }
                 item.instance.transform.localScale = baseScale * group.scaleMultiply;
+                if (registerUndo)
+                {
+                    MarkObjectDirty(item.instance.transform);
+                }
             }
         }
 
@@ -422,6 +507,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                         scaleMultiply = 1f
                     };
                     _avatarSettings.OutfitListGroupItems[groupIndex] = group;
+                    MarkSettingsDirty();
                 }
 
                 group.outfitListItems ??= new List<AmariOutfitListItem>();
@@ -429,6 +515,13 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 var outfitGroupName = groupElement.Q<TextField>("OutfitGroupNameField");
                 if (outfitGroupName != null)
                 {
+                    if (string.IsNullOrWhiteSpace(group.groupName))
+                    {
+                        RecordSettingsUndo("Fix Empty Outfit Group Name");
+                        group.groupName = GetUnusedOutfitGroupName();
+                        MarkSettingsDirty();
+                    }
+
                     outfitGroupName.SetValueWithoutNotify(group.groupName);
                     if (outfitGroupName.userData == null)
                     {
@@ -447,12 +540,16 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                                 return;
                             }
 
+                            RecordSettingsUndo("Change Outfit Group Name");
+
                             var uniqueName = GetUnusedOutfitGroupName(desired);
                             group.groupName = uniqueName;
                             if (!string.Equals(uniqueName, outfitGroupName.value, System.StringComparison.Ordinal))
                             {
                                 outfitGroupName.SetValueWithoutNotify(uniqueName);
                             }
+
+                            MarkSettingsDirty();
                         }
 
                         outfitGroupName.RegisterCallback<FocusOutEvent>(_ => CommitOutfitGroupName());
@@ -477,8 +574,10 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                         scaleMultiplyField.userData = "bound";
                         scaleMultiplyField.RegisterValueChangedCallback(e =>
                         {
+                            RecordSettingsUndo("Change Outfit Scale");
                             group.scaleMultiply = e.newValue;
-                            ApplyScaleMultiplyToGroup(group);
+                            ApplyScaleMultiplyToGroup(group, true, "Apply Outfit Scale");
+                            MarkSettingsDirty();
                         });
                     }
                 }
@@ -551,8 +650,10 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                                 return;
                             }
 
+                            RecordSettingsUndo("Change Active Preview Outfit");
                             _avatarSettings.activePreviewOutfit = item;
-                            UpdatePreviewInstanceActiveStates();
+                            UpdatePreviewInstanceActiveStates(true, "Change Active Preview Outfit");
+                            MarkSettingsDirty();
                             outfitListView.RefreshItems();
                         };
 
@@ -580,7 +681,9 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                                     return;
                                 }
 
+                                Undo.RecordObject(item.instance, "Toggle Include In Build");
                                 item.instance.tag = e.newValue ? "Untagged" : "EditorOnly";
+                                MarkObjectDirty(item.instance);
                             });
                         }
                     };
@@ -598,6 +701,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
                     outfitListView.itemsRemoved += indices =>
                     {
+                        RecordSettingsUndo("Remove Outfit Prefab");
                         if (!_outfitListSnapshots.TryGetValue(outfitListView, out var snapshot))
                         {
                             snapshot = group.outfitListItems.ToList();
@@ -616,13 +720,14 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                                 continue;
                             }
 
-                            DestroyImmediate(item.instance);
+                            Undo.DestroyObjectImmediate(item.instance);
                             if (_avatarSettings.activePreviewOutfit == item)
                             {
-                                OnActivePreviewOutfitDestroy(item);
+                                OnActivePreviewOutfitDestroy(item, true, "Remove Outfit Prefab");
                             }
                         }
 
+                        MarkSettingsDirty();
                         _outfitListSnapshots[outfitListView] = group.outfitListItems.ToList();
                     };
 
@@ -640,6 +745,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             _outfitGroupListView.itemsAdded += indices =>
             {
+                RecordSettingsUndo("Add Outfit Group");
                 foreach (var i in indices)
                 {
                     EnsureListSize(_avatarSettings.OutfitListGroupItems, i);
@@ -650,10 +756,12 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                         scaleMultiply = 1f
                     };
                 }
+                MarkSettingsDirty();
             };
 
             _outfitGroupListView.itemsRemoved += indices =>
             {
+                RecordSettingsUndo("Remove Outfit Group");
                 var snapshot = _avatarSettings.OutfitListGroupItems.ToList();
                 foreach (var i in indices)
                 {
@@ -672,12 +780,12 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     {
                         if (item?.instance)
                         {
-                            DestroyImmediate(item.instance);
+                            Undo.DestroyObjectImmediate(item.instance);
                         }
 
                         if (_avatarSettings.activePreviewOutfit == item)
                         {
-                            OnActivePreviewOutfitDestroy(item);
+                            OnActivePreviewOutfitDestroy(item, true, "Remove Outfit Group");
                         }
                     }
 
@@ -690,6 +798,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     _groupToListView.Remove(group);
                     _listViewToTargetList.Remove(listView);
                 }
+
+                MarkSettingsDirty();
             };
 
             _outfitGroupListView.Rebuild();

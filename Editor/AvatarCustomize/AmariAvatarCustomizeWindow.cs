@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using com.amari_noa.avatar_modular_assistant.runtime;
 using UnityEditor.UIElements;
@@ -29,6 +30,88 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
         private const string WindowTitle = "[AMARI] Avatar Customize";
         private const string AmariSettingsPrefabGuid = "2fe354710d7e2d9439856f459edadc0d";
+
+        private void OnEnable()
+        {
+            Undo.undoRedoPerformed += OnUndoRedoPerformed;
+        }
+
+        private void OnDisable()
+        {
+            Undo.undoRedoPerformed -= OnUndoRedoPerformed;
+        }
+
+        private void OnUndoRedoPerformed()
+        {
+            if (_avatarSettings == null)
+            {
+                return;
+            }
+
+            EnsureActivePreviewOutfit();
+
+            if (_outfitGroupListView != null)
+            {
+                _outfitGroupListView.itemsSource = _avatarSettings.OutfitListGroupItems;
+                _outfitGroupListView.Rebuild();
+            }
+
+            SetupLocalizationTextOutfit(rootVisualElement);
+        }
+
+        private void RecordSettingsUndo(string actionName)
+        {
+            if (_avatarSettings == null)
+            {
+                return;
+            }
+
+            Undo.RecordObject(_avatarSettings, actionName);
+        }
+
+        private void MarkSettingsDirty()
+        {
+            if (_avatarSettings == null)
+            {
+                return;
+            }
+
+            EditorUtility.SetDirty(_avatarSettings);
+            MarkSceneDirty(_avatarSettings.gameObject);
+        }
+
+        private static void MarkSceneDirty(GameObject target)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            var scene = target.scene;
+            if (scene.IsValid())
+            {
+                EditorSceneManager.MarkSceneDirty(scene);
+            }
+        }
+
+        private static void MarkObjectDirty(Object target)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            EditorUtility.SetDirty(target);
+            switch (target)
+            {
+                case Component component:
+                    MarkSceneDirty(component.gameObject);
+                    break;
+                case GameObject go:
+                    MarkSceneDirty(go);
+                    break;
+            }
+        }
 
 
         // TODO 将来的にWindow側でアバター選択が出来るようになったらここを復活させるかも
@@ -136,6 +219,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             instance.name = prefab.name;
 
             _avatarSettings = instance.GetComponent<AmariAvatarSettings>();
+            Undo.RegisterCreatedObjectUndo(instance, "Create Avatar Settings");
+            MarkSettingsDirty();
         }
         #endregion
 
