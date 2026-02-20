@@ -11,6 +11,7 @@ namespace com.amari_noa.avatar_modular_assistant.runtime
         public string groupName;
         public List<AmariOutfitListItem> outfitListItems;
         public float scaleMultiply = 1f;
+        public bool includeInBuild = false;
     }
 
     [Serializable]

@@ -1,7 +1,7 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
     <ui:VisualElement style="flex-grow: 1; align-self: stretch; flex-direction: row; justify-content: space-between;">
         <ui:VisualElement style="flex-grow: 1; margin-top: 10px; margin-right: 10px; margin-bottom: 10px; margin-left: 10px; max-width: 15%;">
-            <ui:Toggle name="UploadToggle" style="-unity-text-align: middle-left;" />
+            <ui:Toggle name="IncludeInBuildToggle" style="-unity-text-align: middle-left;" />
         </ui:VisualElement>
         <ui:VisualElement style="flex-grow: 1; margin-top: 10px; margin-right: 10px; margin-bottom: 10px; margin-left: 10px; min-width: 100px; max-width: 100px; align-items: auto;">
             <ui:Button text="Preview" parse-escape-sequences="true" display-tooltip-when-elided="true" name="OutfitPreviewStatusButton" style="align-self: stretch;" />

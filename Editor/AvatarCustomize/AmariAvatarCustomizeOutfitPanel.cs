@@ -549,6 +549,28 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                             UpdatePreviewInstanceActiveStates();
                             outfitListView.RefreshItems();
                         };
+
+                        var includeInBuildToggle = element.Q<Toggle>("IncludeInBuildToggle");
+                        if (includeInBuildToggle != null)
+                        {
+                            var includeInBuild = item.instance != null && !item.instance.CompareTag("EditorOnly");
+                            includeInBuildToggle.SetValueWithoutNotify(includeInBuild);
+                            if (includeInBuildToggle.userData != null)
+                            {
+                                return;
+                            }
+                            includeInBuildToggle.userData = "bound";
+                            includeInBuildToggle.RegisterValueChangedCallback(e =>
+                            {
+                                if (item.instance == null)
+                                {
+                                    includeInBuildToggle.SetValueWithoutNotify(false);
+                                    return;
+                                }
+
+                                item.instance.tag = e.newValue ? "Untagged" : "EditorOnly";
+                            });
+                        }
                     };
 
                     outfitListView.itemsAdded += indices =>
