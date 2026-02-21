@@ -1,10 +1,8 @@
 using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using com.amari_noa.avatar_modular_assistant.runtime;
-using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 using Object = UnityEngine.Object;
 using VRC.SDK3.Avatars.Components;
@@ -248,6 +246,9 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             // AvatarDetails ----------
             BuildAvatarDetailsPanel(root);
+
+            // SubPanel ----------
+            BuildSubPanel(root);
 
             // OutfitList ----------
             BindOutfitList(root);

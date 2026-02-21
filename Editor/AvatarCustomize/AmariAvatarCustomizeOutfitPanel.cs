@@ -12,6 +12,15 @@ namespace com.amari_noa.avatar_modular_assistant.editor
     public partial class AmariAvatarCustomizeWindow
     {
         private const string DefaultGroupName = "Default";
+        private static readonly Texture2D OutfitInfoIconNormal = EditorGUIUtility.IconContent("console.infoicon.sml").image as Texture2D;
+        private static readonly Texture2D OutfitInfoIconNotify = EditorGUIUtility.IconContent("console.warnicon.sml").image as Texture2D;
+        private static readonly Texture2D OutfitInfoIconProblem = EditorGUIUtility.IconContent("console.erroricon.sml").image as Texture2D;
+
+        private sealed class OutfitInfoButtonState
+        {
+            public bool bound;
+            public AmariOutfitListItem item;
+        }
 
         private void EnsureActivePreviewOutfit()
         {
@@ -151,6 +160,77 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 ? AmariLocalization.Get("amari.window.avatarCustomize.previewButtonPreviewing")
                 : AmariLocalization.Get("amari.window.avatarCustomize.previewButtonPreview");
             button.style.backgroundColor = isPreviewing ? new StyleColor(new Color(0.0f, 0.6f, 0.0f)) : new StyleColor(new Color(0.6f, 0.0f, 0.0f));
+        }
+
+        private static void SetOutfitInfoButtonState(Button button, bool needsAttention)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            button.text = string.Empty;
+            var icon = needsAttention ? OutfitInfoIconNotify : OutfitInfoIconNormal;
+            if (icon != null)
+            {
+                button.style.backgroundImage = new StyleBackground(icon);
+            }
+        }
+
+        private static OutfitInfoButtonState GetOrCreateOutfitInfoButtonState(Button button)
+        {
+            if (button.userData is OutfitInfoButtonState state)
+            {
+                return state;
+            }
+
+            state = new OutfitInfoButtonState();
+            button.userData = state;
+            return state;
+        }
+
+        private static void BindOutfitInfoButton(Button button, AmariOutfitListItem item, System.Action<AmariOutfitListItem> onClick)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            var state = GetOrCreateOutfitInfoButtonState(button);
+            state.item = item;
+
+            if (state.bound)
+            {
+                return;
+            }
+
+            state.bound = true;
+            button.clicked += () =>
+            {
+                if (button.userData is not OutfitInfoButtonState s || s.item == null)
+                {
+                    return;
+                }
+
+                onClick?.Invoke(s.item);
+            };
+        }
+
+        private void OnOutfitInfoButtonClicked(AmariOutfitListItem item)
+        {
+            // TODO: implement the actual behavior to guide the user to pending actions.
+            if (item == null)
+            {
+                return;
+            }
+
+            Debug.Log($"[AMARI] Outfit info clicked: {item.prefabGuid}");
+        }
+
+        private bool ShouldNotifyOutfitInfo(AmariOutfitListItem item)
+        {
+            // TODO: implement actual condition for notifying the user.
+            return false;
         }
 
         private static void SetInstanceActive(GameObject instance, bool isActive, bool registerUndo, string undoName)
@@ -530,9 +610,9 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
                 group.outfitListItems ??= new List<AmariOutfitListItem>();
 
-                        var outfitGroupName = groupElement.Q<TextField>("OutfitGroupNameField");
-                        if (outfitGroupName != null)
-                        {
+                var outfitGroupName = groupElement.Q<TextField>("OutfitGroupNameField");
+                if (outfitGroupName != null)
+                {
                     if (string.IsNullOrWhiteSpace(group.groupName))
                     {
                         RecordSettingsUndo("Fix Empty Outfit Group Name");
@@ -540,11 +620,11 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                         MarkSettingsDirty();
                     }
 
-                            outfitGroupName.label = AmariLocalization.Get("amari.window.avatarCustomize.outfitGroupNameLabel");
-                            outfitGroupName.SetValueWithoutNotify(group.groupName);
-                            if (outfitGroupName.userData == null)
-                            {
-                                outfitGroupName.userData = "bound";
+                    outfitGroupName.label = AmariLocalization.Get("amari.window.avatarCustomize.outfitGroupNameLabel");
+                    outfitGroupName.SetValueWithoutNotify(group.groupName);
+                    if (outfitGroupName.userData == null)
+                    {
+                        outfitGroupName.userData = "bound";
 
                         void CommitOutfitGroupName()
                         {
@@ -584,13 +664,13 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     }
                 }
 
-                        var scaleMultiplyField = groupElement.Q<FloatField>("ScaleMultiply");
-                        if (scaleMultiplyField != null)
-                        {
-                            scaleMultiplyField.label = AmariLocalization.Get("amari.window.avatarCustomize.scaleMultiplyLabel");
-                            scaleMultiplyField.SetValueWithoutNotify(group.scaleMultiply);
-                            if (scaleMultiplyField.userData == null)
-                            {
+                var scaleMultiplyField = groupElement.Q<FloatField>("ScaleMultiply");
+                if (scaleMultiplyField != null)
+                {
+                    scaleMultiplyField.label = AmariLocalization.Get("amari.window.avatarCustomize.scaleMultiplyLabel");
+                    scaleMultiplyField.SetValueWithoutNotify(group.scaleMultiply);
+                    if (scaleMultiplyField.userData == null)
+                    {
                         scaleMultiplyField.userData = "bound";
                         scaleMultiplyField.RegisterValueChangedCallback(e =>
                         {
@@ -681,6 +761,14 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                         if (includeInBuildTitle != null)
                         {
                             includeInBuildTitle.text = AmariLocalization.Get("amari.window.avatarCustomize.includeInBuildTitle");
+                        }
+
+                        var outfitInfoButton = element.Q<Button>("OutfitInfoButton");
+                        if (outfitInfoButton != null)
+                        {
+                            var needsAttention = ShouldNotifyOutfitInfo(item);
+                            SetOutfitInfoButtonState(outfitInfoButton, needsAttention);
+                            BindOutfitInfoButton(outfitInfoButton, item, OnOutfitInfoButtonClicked);
                         }
 
                         var includeInBuildToggle = element.Q<Toggle>("IncludeInBuildToggle");

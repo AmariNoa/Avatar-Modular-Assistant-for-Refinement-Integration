@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using com.amari_noa.avatar_modular_assistant.editor.integrations;
 using UnityEngine;
 
 // ReSharper disable once CheckNamespace
@@ -34,5 +35,8 @@ namespace com.amari_noa.avatar_modular_assistant.runtime
 
         // アクティブな衣装の記録
         [ReadOnly] public AmariOutfitListItem activePreviewOutfit;
+
+        // 使うOutfitツールの記録
+        [ReadOnly] public AmariOutfitToolType outfitToolType = AmariOutfitToolType.None;
     }
 }

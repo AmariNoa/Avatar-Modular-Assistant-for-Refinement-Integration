@@ -1,0 +1,25 @@
+{
+    "name": "com.amari-noa.avatar-modular-assistant.editor.integrations.modular-avatar",
+    "rootNamespace": "com.amari_noa.avatar_modular_assistant.editor.integrations.modular_avatar",
+    "references": [
+        "GUID:fc900867c0f47cd49b6e2ae4ef907300",
+        "GUID:0c825f95da9c30544a36d92979fcae14"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "nadena.dev.modular-avatar",
+            "expression": "",
+            "define": "AMARI_MA_INSTALLED"
+        }
+    ],
+    "noEngineReferences": false
+}
