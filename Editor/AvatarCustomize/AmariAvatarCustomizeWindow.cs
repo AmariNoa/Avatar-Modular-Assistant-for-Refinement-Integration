@@ -31,6 +31,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
         private void OnEnable()
         {
+            EnsureOutfitIconsLoaded();
             Undo.undoRedoPerformed += OnUndoRedoPerformed;
         }
 

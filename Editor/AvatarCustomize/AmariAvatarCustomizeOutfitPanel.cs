@@ -12,9 +12,10 @@ namespace com.amari_noa.avatar_modular_assistant.editor
     public partial class AmariAvatarCustomizeWindow
     {
         private const string DefaultGroupName = "Default";
-        private static readonly Texture2D OutfitInfoIconNormal = EditorGUIUtility.IconContent("console.infoicon.sml").image as Texture2D;
-        private static readonly Texture2D OutfitInfoIconNotify = EditorGUIUtility.IconContent("console.warnicon.sml").image as Texture2D;
-        private static readonly Texture2D OutfitInfoIconProblem = EditorGUIUtility.IconContent("console.erroricon.sml").image as Texture2D;
+        private static Texture2D OutfitInfoIconNormal;
+        private static Texture2D OutfitInfoIconNotify;
+        private static Texture2D OutfitInfoIconProblem;
+        private static bool _outfitIconsLoaded;
 
         private sealed class OutfitInfoButtonState
         {
@@ -40,6 +41,20 @@ namespace com.amari_noa.avatar_modular_assistant.editor
         {
             public bool bound;
             public AmariOutfitGroupListItem group;
+        }
+
+        private static void EnsureOutfitIconsLoaded()
+        {
+            if (_outfitIconsLoaded)
+            {
+                return;
+            }
+
+            OutfitInfoIconNormal = EditorGUIUtility.IconContent("console.infoicon.sml").image as Texture2D;
+            OutfitInfoIconNotify = EditorGUIUtility.IconContent("console.warnicon.sml").image as Texture2D;
+            OutfitInfoIconProblem = EditorGUIUtility.IconContent("console.erroricon.sml").image as Texture2D;
+
+            _outfitIconsLoaded = true;
         }
 
         private void EnsureActivePreviewOutfit()
@@ -157,16 +172,6 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 item.instance.SetActive(item == active);
             }
 
-            // Refresh UI so preview buttons reflect current active item
-            if (_outfitGroupListView != null)
-            {
-                _outfitGroupListView.RefreshItems();
-            }
-
-            foreach (var listView in _outfitListSnapshots.Keys)
-            {
-                listView?.RefreshItems();
-            }
         }
 
         private static void SetPreviewButtonState(Button button, bool isPreviewing)
@@ -188,6 +193,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             {
                 return;
             }
+
+            EnsureOutfitIconsLoaded();
 
             button.text = string.Empty;
             var icon = needsAttention ? OutfitInfoIconNotify : OutfitInfoIconNormal;
@@ -659,6 +666,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             _outfitGroupListView = root.Q<ListView>("OutfitGroupListView");
             _outfitGroupListView.itemsSource = _avatarSettings.OutfitListGroupItems;
             _outfitGroupListView.makeItem = () => outfitGroupItemAsset.Instantiate();
+            _outfitGroupListView.virtualizationMethod = CollectionVirtualizationMethod.FixedHeight;
+            _outfitGroupListView.fixedItemHeight = 260f;
 
             _outfitGroupListView.bindItem = (groupElement, groupIndex) =>
             {
@@ -775,13 +784,22 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     Debug.LogError("OutfitListView not found in OutfitGroupListItem UXML");
                     return;
                 }
+                outfitListView.virtualizationMethod = CollectionVirtualizationMethod.FixedHeight;
+                outfitListView.fixedItemHeight = 90f;
+                outfitListView.style.height = 180f; // stable viewport height; inner list scrolls independently
+
+                var listViewState = GetOrCreateOutfitListViewState(outfitListView);
+                if (listViewState.group != null && listViewState.group != group)
+                {
+                    // この ListView は別グループで再利用されている。古い紐付けをクリアする。
+                    _groupToListView.Remove(listViewState.group);
+                    _outfitListSnapshots.Remove(outfitListView);
+                }
 
                 outfitListView.itemsSource = group.outfitListItems;
                 outfitListView.makeItem = () => outfitItemAsset.Instantiate();
                 _listViewToTargetList[outfitListView] = group.outfitListItems;
                 UpdateGroupListViewMapping(group, outfitListView);
-
-                var listViewState = GetOrCreateOutfitListViewState(outfitListView);
                 listViewState.group = group;
                 if (!listViewState.bound)
                 {
@@ -910,22 +928,6 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                         }
                     };
 
-                    outfitListView.itemsAdded += indices =>
-                    {
-                        if (outfitListView.userData is not OutfitListViewState state || state.group?.outfitListItems == null)
-                        {
-                            return;
-                        }
-
-                        foreach (var i in indices)
-                        {
-                            EnsureListSize(state.group.outfitListItems, i);
-                            state.group.outfitListItems[i] ??= new AmariOutfitListItem();
-                        }
-
-                        _outfitListSnapshots[outfitListView] = state.group.outfitListItems.ToList();
-                    };
-
                     outfitListView.itemsRemoved += indices =>
                     {
                         if (outfitListView.userData is not OutfitListViewState state || state.group?.outfitListItems == null)
@@ -960,7 +962,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                         }
 
                         MarkSettingsDirty();
-                        _outfitListSnapshots[outfitListView] = group.outfitListItems.ToList();
+                        _outfitListSnapshots[outfitListView] = state.group.outfitListItems.ToList();
                     };
 
                     RegisterGroupDragTargets(outfitListView);
@@ -972,26 +974,14 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 RegisterGroupDragTargets(groupElement);
             };
 
-            _outfitGroupListView.itemsAdded += indices =>
-            {
-                RecordSettingsUndo("Add Outfit Group");
-                foreach (var i in indices)
-                {
-                    EnsureListSize(_avatarSettings.OutfitListGroupItems, i);
-                    _avatarSettings.OutfitListGroupItems[i] ??= new AmariOutfitGroupListItem
-                    {
-                        groupName = GetUnusedOutfitGroupName(),
-                        outfitListItems = new List<AmariOutfitListItem>(),
-                        scaleMultiply = 1f
-                    };
-                }
-                MarkSettingsDirty();
-            };
-
             _outfitGroupListView.itemsRemoved += indices =>
             {
                 RecordSettingsUndo("Remove Outfit Group");
-                var snapshot = _avatarSettings.OutfitListGroupItems.ToList();
+                var snapshot = _avatarSettings.OutfitListGroupItems?.ToList();
+                if (snapshot == null)
+                {
+                    return;
+                }
                 foreach (var i in indices)
                 {
                     if (i < 0 || i >= snapshot.Count)
