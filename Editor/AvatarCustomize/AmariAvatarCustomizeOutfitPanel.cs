@@ -658,6 +658,9 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
         private void BindOutfitList(VisualElement root)
         {
+            return;
+
+            // TODO 再実装
             if (_avatarSettings?.OutfitListGroupItems == null)
             {
                 return;
@@ -666,8 +669,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             _outfitGroupListView = root.Q<ListView>("OutfitGroupListView");
             _outfitGroupListView.itemsSource = _avatarSettings.OutfitListGroupItems;
             _outfitGroupListView.makeItem = () => outfitGroupItemAsset.Instantiate();
-            _outfitGroupListView.virtualizationMethod = CollectionVirtualizationMethod.FixedHeight;
-            _outfitGroupListView.fixedItemHeight = 260f;
+            _outfitGroupListView.virtualizationMethod = CollectionVirtualizationMethod.DynamicHeight;
 
             _outfitGroupListView.bindItem = (groupElement, groupIndex) =>
             {
@@ -784,9 +786,6 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     Debug.LogError("OutfitListView not found in OutfitGroupListItem UXML");
                     return;
                 }
-                outfitListView.virtualizationMethod = CollectionVirtualizationMethod.FixedHeight;
-                outfitListView.fixedItemHeight = 90f;
-                outfitListView.style.height = 180f; // stable viewport height; inner list scrolls independently
 
                 var listViewState = GetOrCreateOutfitListViewState(outfitListView);
                 if (listViewState.group != null && listViewState.group != group)
@@ -795,6 +794,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     _groupToListView.Remove(listViewState.group);
                     _outfitListSnapshots.Remove(outfitListView);
                 }
+
+                // Height is driven by UXML; do not adjust from code to avoid re-entrant layout/scroll loops
 
                 outfitListView.itemsSource = group.outfitListItems;
                 outfitListView.makeItem = () => outfitItemAsset.Instantiate();

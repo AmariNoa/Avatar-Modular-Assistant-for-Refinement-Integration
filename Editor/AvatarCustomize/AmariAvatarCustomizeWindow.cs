@@ -14,12 +14,19 @@ namespace com.amari_noa.avatar_modular_assistant.editor
     {
         [SerializeField] private VisualTreeAsset visualTreeAsset;
         [Space]
+        [SerializeField] private VisualTreeAsset outfitGroupTabItemAsset;
+
+        // TODO 後で消す
         [SerializeField] private VisualTreeAsset outfitGroupItemAsset;
+
         [SerializeField] private VisualTreeAsset outfitItemAsset;
 
         private VRCAvatarDescriptor _avatarDescriptor;
         private AmariAvatarSettings _avatarSettings;
+
+        // TODO 後で消す
         private ListView _outfitGroupListView;
+
         private readonly Dictionary<ListView, List<AmariOutfitListItem>> _outfitListSnapshots = new();
         private readonly Dictionary<AmariOutfitGroupListItem, ListView> _groupToListView = new();
         private readonly Dictionary<ListView, List<AmariOutfitListItem>> _listViewToTargetList = new();
@@ -252,6 +259,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             BuildSubPanel(root);
 
             // OutfitList ----------
+            BuildOutfitGroupTabPanel(root);
+
             BindOutfitList(root);
         }
     }

@@ -31,7 +31,7 @@ namespace com.amari_noa.avatar_modular_assistant.runtime
     {
         // 登録衣装一覧
         [SerializeField, ReadOnly] private List<AmariOutfitGroupListItem> outfitListGroupItems;
-        public List<AmariOutfitGroupListItem> OutfitListGroupItems => outfitListGroupItems;
+        public List<AmariOutfitGroupListItem> OutfitListGroupItems => outfitListGroupItems ??= new List<AmariOutfitGroupListItem>();
 
         // アクティブな衣装の記録
         [ReadOnly] public AmariOutfitListItem activePreviewOutfit;
