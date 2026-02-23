@@ -15,9 +15,9 @@
         <ui:DropdownField label="OutfitTool" name="OutfitToolType" style="align-self: stretch; justify-content: space-around;" />
     </ui:VisualElement>
     <ui:VisualElement name="MainPanel" style="flex-grow: 1;">
-        <ui:VisualElement style="flex-grow: 1; max-height: 60px; min-height: 60px; flex-direction: row; justify-content: space-between; align-self: stretch; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px; align-items: stretch;">
-            <ui:ScrollView name="OutfitGroupTabListView" horizontal-scrolling="true" vertical-scrolling="false" style="flex-direction: row; max-height: 40px; min-height: 40px; align-self: stretch; max-width: none; width: 90%;" />
-            <ui:Button text="+" parse-escape-sequences="true" display-tooltip-when-elided="true" name="NewOutfitTabGroupButton" style="max-width: 40px; min-width: 40px; width: 40px;" />
+        <ui:VisualElement style="flex-grow: 1; flex-direction: row; align-self: stretch; padding-top: 5px; padding-right: 5px; padding-bottom: 5px; padding-left: 5px; align-items: stretch; background-color: rgb(30, 30, 30); margin-top: 5px; margin-right: 5px; margin-bottom: 5px; margin-left: 5px; justify-content: space-around; height: 60px;">
+            <ui:ScrollView name="OutfitGroupTabListView" horizontal-scrolling="true" vertical-scrolling="false" style="flex-direction: row; max-height: 40px; min-height: 40px; align-self: stretch; max-width: none; width: 90%; justify-content: space-around;" />
+            <ui:Button text="+" parse-escape-sequences="true" display-tooltip-when-elided="true" name="NewOutfitTabGroupButton" style="width: 40px; height: 40px; align-self: center;" />
         </ui:VisualElement>
         <ui:VisualElement name="MainInnerPanel" style="flex-grow: 1; flex-direction: row; max-width: none; max-height: none;">
             <ui:VisualElement name="OutfitListPanel" style="flex-grow: 1; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px; max-width: 50%;">
