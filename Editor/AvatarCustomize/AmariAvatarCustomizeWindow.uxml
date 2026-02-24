@@ -6,13 +6,21 @@
     <ui:VisualElement name="AvatarDetailsPanel" style="flex-grow: 1; min-height: 80px; flex-direction: row; max-height: 80px;">
         <ui:VisualElement style="flex-grow: 1; flex-direction: row;">
             <ui:VisualElement name="AvatarThumbnail" style="flex-grow: 1; min-height: 60px; min-width: 80px; max-width: 80px; max-height: 60px; margin-top: 10px; margin-right: 10px; margin-bottom: 10px; margin-left: 10px;" />
-            <ui:Label tabindex="-1" text="Avatar:" parse-escape-sequences="true" display-tooltip-when-elided="true" style="-unity-text-align: middle-left;" />
-            <ui:Label tabindex="-1" parse-escape-sequences="true" display-tooltip-when-elided="true" name="AvatarName" style="-unity-text-align: middle-left;" />
+            <ui:VisualElement style="flex-grow: 1; padding-top: 10px; padding-bottom: 10px; flex-direction: row;">
+                <ui:VisualElement style="flex-grow: 1; flex-direction: column; justify-content: space-around; align-self: stretch; padding-bottom: 5px; padding-top: 5px; max-width: 110px; min-width: 110px;">
+                    <ui:Label tabindex="-1" text="Avatar Name:" parse-escape-sequences="true" display-tooltip-when-elided="true" style="-unity-text-align: middle-left;" />
+                    <ui:Label tabindex="-1" text="Blueprint ID:" parse-escape-sequences="true" display-tooltip-when-elided="true" style="-unity-text-align: middle-left;" />
+                </ui:VisualElement>
+                <ui:VisualElement style="flex-grow: 1; flex-direction: column; justify-content: space-around; align-self: stretch; padding-top: 5px; padding-bottom: 5px;">
+                    <ui:Label tabindex="-1" parse-escape-sequences="true" display-tooltip-when-elided="true" name="AvatarName" style="-unity-text-align: middle-left;" />
+                    <ui:Label tabindex="-1" parse-escape-sequences="true" display-tooltip-when-elided="true" name="BlueprintId" style="-unity-text-align: middle-left;" />
+                </ui:VisualElement>
+            </ui:VisualElement>
         </ui:VisualElement>
         <ui:VisualElement style="flex-grow: 1;" />
     </ui:VisualElement>
     <ui:VisualElement name="SubPanel" style="flex-grow: 1; max-height: 10%; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px; min-height: 60px;">
-        <ui:DropdownField label="OutfitTool" name="OutfitToolType" style="align-self: stretch; justify-content: space-around;" />
+        <ui:DropdownField label="Outfit Tool" name="OutfitToolType" style="align-self: stretch; justify-content: space-around;" />
     </ui:VisualElement>
     <ui:VisualElement name="MainPanel" style="flex-grow: 1;">
         <ui:VisualElement style="flex-grow: 1; flex-direction: row; align-self: stretch; padding-top: 5px; padding-right: 5px; padding-bottom: 5px; padding-left: 5px; align-items: stretch; background-color: rgb(30, 30, 30); margin-top: 5px; margin-right: 5px; margin-bottom: 5px; margin-left: 5px; justify-content: space-around; max-height: 60px; min-height: 60px;">
@@ -32,8 +40,10 @@
                     <ui:ListView name="OutfitListView" show-border="true" show-foldout-header="false" show-add-remove-footer="true" virtualization-method="DynamicHeight" />
                 </ui:VisualElement>
             </ui:VisualElement>
-            <ui:VisualElement name="InspectorPanel" style="flex-grow: 1; max-width: 50%; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px;">
+            <ui:VisualElement name="InspectorRootPanel" style="flex-grow: 1; max-width: 50%; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px;">
                 <ui:Label tabindex="-1" text="Inspector" parse-escape-sequences="true" display-tooltip-when-elided="true" name="InspectorTitle" />
+                <ui:VisualElement name="InspectorInfoPanel" style="flex-grow: 1; background-color: rgb(70, 70, 70);" />
+                <ui:VisualElement name="InspectorPanel" style="flex-grow: 1; background-color: rgb(70, 70, 70);" />
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>
