@@ -9,8 +9,6 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 {
     public partial class AmariAvatarCustomizeWindow
     {
-        private const string TabDragDataKey = "AMARI_OutfitGroupTabIndex";
-
         private void BuildOutfitGroupTabPanel(VisualElement root)
         {
             var outfitTabScrollView = root.Q<ScrollView>("OutfitGroupTabListView");
@@ -22,7 +20,6 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
 
             SetupTabScrollView(outfitTabScrollView);
-            RegisterTabDropTarget(outfitTabScrollView);
             RefreshOutfitGroupTabs(outfitTabScrollView);
 
             outfitTabItemAddButton.clicked += () =>
@@ -98,7 +95,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     }
                 }
 
-                RegisterTabDragEvents(tabElement, index, tabScrollView);
+                RegisterTabMoveButtons(tabElement, group, tabScrollView);
 
                 tabScrollView.contentContainer.Add(tabElement);
             }
@@ -161,107 +158,54 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             RefreshOutfitGroupTabs(tabScrollView);
         }
 
-        private void RegisterTabDragEvents(VisualElement tabElement, int index, ScrollView tabScrollView)
+        private void RegisterTabMoveButtons(VisualElement tabElement, AmariOutfitGroupListItem group, ScrollView tabScrollView)
         {
             if (tabElement == null)
             {
                 return;
             }
 
-            tabElement.RegisterCallback<PointerDownEvent>(evt =>
+            void Wire(Button btn, int direction)
             {
-                if (evt.button != (int)MouseButton.LeftMouse)
+                if (btn == null)
                 {
                     return;
                 }
 
-                // avoid starting drag from remove button
-                if (evt.target is VisualElement ve && ve.name == "OutfitGroupRemoveButton")
+                btn.clicked += () =>
                 {
-                    return;
-                }
-
-                DragAndDrop.PrepareStartDrag();
-                DragAndDrop.SetGenericData(TabDragDataKey, index);
-                DragAndDrop.StartDrag("Outfit Group Tab");
-                DragAndDrop.visualMode = DragAndDropVisualMode.Move;
-                evt.StopImmediatePropagation();
-            });
-        }
-
-        private void RegisterTabDropTarget(ScrollView tabScrollView)
-        {
-            var content = tabScrollView.contentContainer;
-            content.RegisterCallback<DragUpdatedEvent>(evt =>
-            {
-                if (DragAndDrop.GetGenericData(TabDragDataKey) is not int)
-                {
-                    return;
-                }
-
-                DragAndDrop.visualMode = DragAndDropVisualMode.Move;
-                evt.StopPropagation();
-            });
-
-            content.RegisterCallback<DragPerformEvent>(evt =>
-            {
-                if (DragAndDrop.GetGenericData(TabDragDataKey) is not int fromIndex)
-                {
-                    return;
-                }
-
-                var toIndex = GetTabDropIndex(tabScrollView, evt.mousePosition);
-                MoveOutfitGroup(fromIndex, toIndex);
-                DragAndDrop.AcceptDrag();
-                RefreshOutfitGroupTabs(tabScrollView);
-                evt.StopPropagation();
-            });
-        }
-
-        private int GetTabDropIndex(ScrollView tabScrollView, Vector2 mousePosition)
-        {
-            var content = tabScrollView.contentContainer;
-            for (var i = 0; i < content.childCount; i++)
-            {
-                var child = content[i];
-                if (mousePosition.x < child.worldBound.center.x)
-                {
-                    return i;
-                }
+                    MoveOutfitGroup(group, direction);
+                    RefreshOutfitGroupTabs(tabScrollView);
+                };
             }
 
-            return content.childCount;
+            Wire(tabElement.Q<Button>("LeftButton"), -1);
+            Wire(tabElement.Q<Button>("RightButton"), 1);
         }
 
-        private void MoveOutfitGroup(int fromIndex, int toIndex)
+        private void MoveOutfitGroup(AmariOutfitGroupListItem group, int direction)
         {
-            if (_avatarSettings?.OutfitListGroupItems == null)
+            if (_avatarSettings?.OutfitListGroupItems == null || group == null)
             {
                 return;
             }
 
             var list = _avatarSettings.OutfitListGroupItems;
-            if (fromIndex < 0 || fromIndex >= list.Count)
+            var fromIndex = list.IndexOf(group);
+            if (fromIndex < 0)
             {
                 return;
             }
 
-            toIndex = Mathf.Clamp(toIndex, 0, list.Count);
-            if (fromIndex == toIndex || fromIndex == toIndex - 1)
+            var toIndex = Mathf.Clamp(fromIndex + direction, 0, list.Count - 1);
+            if (fromIndex == toIndex)
             {
                 return;
             }
 
             RecordSettingsUndo("Reorder Outfit Groups");
 
-            var item = list[fromIndex];
-            list.RemoveAt(fromIndex);
-            if (toIndex > fromIndex)
-            {
-                toIndex--;
-            }
-
-            list.Insert(toIndex, item);
+            (list[fromIndex], list[toIndex]) = (list[toIndex], list[fromIndex]);
             MarkSettingsDirty();
         }
     }
