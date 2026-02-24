@@ -88,7 +88,29 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 {
                     nameButton.text = group.groupName;
                     nameButton.tooltip = group.groupName;
-                    nameButton.clicked += () => SelectOutfitGroup(group, tabScrollView, root);
+                    var nameState = GetOrCreateOutfitGroupElementState(nameButton);
+                    nameState.group = group;
+                    if (!nameState.bound)
+                    {
+                        nameState.bound = true;
+                        nameButton.clicked += () =>
+                        {
+                            if (nameButton.userData is not OutfitGroupElementState s || s.group == null)
+                            {
+                                return;
+                            }
+
+                            if (_activeOutfitGroupTab == s.group)
+                            {
+                                return;
+                            }
+
+                            SelectOutfitGroup(s.group, tabScrollView, root);
+                        };
+                    }
+
+                    var isActive = group == _activeOutfitGroupTab;
+                    nameButton.SetEnabled(!isActive);
                 }
 
                 var removeButton = tabElement.Q<Button>("OutfitGroupRemoveButton");
@@ -111,7 +133,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     }
                 }
 
-                RegisterTabMoveButtons(tabElement, group, tabScrollView, root);
+                RegisterTabMoveButtons(tabElement, group, tabScrollView, root, index);
 
                 tabScrollView.contentContainer.Add(tabElement);
             }
@@ -183,7 +205,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             RefreshOutfitGroupTabs(tabScrollView, root);
         }
 
-        private void RegisterTabMoveButtons(VisualElement tabElement, AmariOutfitGroupListItem group, ScrollView tabScrollView, VisualElement root)
+        private void RegisterTabMoveButtons(VisualElement tabElement, AmariOutfitGroupListItem group, ScrollView tabScrollView, VisualElement root, int index)
         {
             if (tabElement == null)
             {
@@ -196,6 +218,10 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 {
                     return;
                 }
+
+                btn.SetEnabled(direction < 0
+                    ? index > 0
+                    : index < _avatarSettings.OutfitListGroupItems.Count - 1);
 
                 btn.clicked += () =>
                 {
@@ -243,7 +269,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
 
             _activeOutfitGroupTab = group;
-            BindOutfitGroupPanel(root, group, tabScrollView);
+            RefreshOutfitGroupTabs(tabScrollView, root);
         }
 
         private void BindOutfitGroupPanel(VisualElement root, AmariOutfitGroupListItem group, ScrollView tabScrollView)
@@ -383,12 +409,17 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     return;
                 }
 
-                EnsureListSize(targetList, index);
+                if (index < 0 || index >= targetList.Count)
+                {
+                    return;
+                }
+
                 var item = targetList[index];
                 if (item == null)
                 {
                     item = new AmariOutfitListItem();
                     targetList[index] = item;
+                    MarkSettingsDirty();
                 }
 
                 var currentGroup = FindOutfitGroupByList(targetList);
