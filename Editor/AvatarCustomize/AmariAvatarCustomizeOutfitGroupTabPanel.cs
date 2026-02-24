@@ -1,14 +1,19 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using com.amari_noa.avatar_modular_assistant.runtime;
+using UnityEditor.Search;
 using UnityEngine;
 using UnityEngine.UIElements;
+using EditorObjectField = UnityEditor.UIElements.ObjectField;
 
 // ReSharper disable once CheckNamespace
 namespace com.amari_noa.avatar_modular_assistant.editor
 {
     public partial class AmariAvatarCustomizeWindow
     {
+        private AmariOutfitGroupListItem _activeOutfitGroupTab;
+
         private void BuildOutfitGroupTabPanel(VisualElement root)
         {
             var outfitTabScrollView = root.Q<ScrollView>("OutfitGroupTabListView");
@@ -20,11 +25,11 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
 
             SetupTabScrollView(outfitTabScrollView);
-            RefreshOutfitGroupTabs(outfitTabScrollView);
+            RefreshOutfitGroupTabs(outfitTabScrollView, root);
 
             outfitTabItemAddButton.clicked += () =>
             {
-                AddOutfitGroup(outfitTabScrollView);
+                AddOutfitGroup(outfitTabScrollView, root);
             };
         }
 
@@ -37,7 +42,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             scrollView.contentContainer.style.alignItems = Align.Center;
         }
 
-        private void RefreshOutfitGroupTabs(ScrollView tabScrollView)
+        private void RefreshOutfitGroupTabs(ScrollView tabScrollView, VisualElement root)
         {
             if (_avatarSettings?.OutfitListGroupItems == null || tabScrollView == null)
             {
@@ -45,6 +50,16 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
 
             tabScrollView.contentContainer.Clear();
+
+            if (_activeOutfitGroupTab != null && !_avatarSettings.OutfitListGroupItems.Contains(_activeOutfitGroupTab))
+            {
+                _activeOutfitGroupTab = null;
+            }
+
+            if (_activeOutfitGroupTab == null && _avatarSettings.OutfitListGroupItems.Count > 0)
+            {
+                _activeOutfitGroupTab = _avatarSettings.OutfitListGroupItems[0];
+            }
 
             for (var index = 0; index < _avatarSettings.OutfitListGroupItems.Count; index++)
             {
@@ -73,6 +88,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 {
                     nameButton.text = group.groupName;
                     nameButton.tooltip = group.groupName;
+                    nameButton.clicked += () => SelectOutfitGroup(group, tabScrollView, root);
                 }
 
                 var removeButton = tabElement.Q<Button>("OutfitGroupRemoveButton");
@@ -90,18 +106,20 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                                 return;
                             }
 
-                            RemoveOutfitGroup(s.group, tabScrollView);
+                            RemoveOutfitGroup(s.group, tabScrollView, root);
                         };
                     }
                 }
 
-                RegisterTabMoveButtons(tabElement, group, tabScrollView);
+                RegisterTabMoveButtons(tabElement, group, tabScrollView, root);
 
                 tabScrollView.contentContainer.Add(tabElement);
             }
+
+            BindOutfitGroupPanel(root, _activeOutfitGroupTab, tabScrollView);
         }
 
-        private void AddOutfitGroup(ScrollView tabScrollView)
+        private void AddOutfitGroup(ScrollView tabScrollView, VisualElement root)
         {
             if (_avatarSettings == null)
             {
@@ -119,10 +137,11 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             _avatarSettings.OutfitListGroupItems.Add(newGroup);
             MarkSettingsDirty();
-            RefreshOutfitGroupTabs(tabScrollView);
+            _activeOutfitGroupTab = newGroup;
+            RefreshOutfitGroupTabs(tabScrollView, root);
         }
 
-        private void RemoveOutfitGroup(AmariOutfitGroupListItem group, ScrollView tabScrollView)
+        private void RemoveOutfitGroup(AmariOutfitGroupListItem group, ScrollView tabScrollView, VisualElement root)
         {
             if (_avatarSettings?.OutfitListGroupItems == null || group == null)
             {
@@ -155,10 +174,16 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             _avatarSettings.OutfitListGroupItems.RemoveAt(index);
             MarkSettingsDirty();
-            RefreshOutfitGroupTabs(tabScrollView);
+            if (_activeOutfitGroupTab == group)
+            {
+                _activeOutfitGroupTab = _avatarSettings.OutfitListGroupItems.Count > 0
+                    ? _avatarSettings.OutfitListGroupItems[Mathf.Min(index, _avatarSettings.OutfitListGroupItems.Count - 1)]
+                    : null;
+            }
+            RefreshOutfitGroupTabs(tabScrollView, root);
         }
 
-        private void RegisterTabMoveButtons(VisualElement tabElement, AmariOutfitGroupListItem group, ScrollView tabScrollView)
+        private void RegisterTabMoveButtons(VisualElement tabElement, AmariOutfitGroupListItem group, ScrollView tabScrollView, VisualElement root)
         {
             if (tabElement == null)
             {
@@ -175,7 +200,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 btn.clicked += () =>
                 {
                     MoveOutfitGroup(group, direction);
-                    RefreshOutfitGroupTabs(tabScrollView);
+                    _activeOutfitGroupTab = group;
+                    RefreshOutfitGroupTabs(tabScrollView, root);
                 };
             }
 
@@ -207,6 +233,317 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             (list[fromIndex], list[toIndex]) = (list[toIndex], list[fromIndex]);
             MarkSettingsDirty();
+        }
+
+        private void SelectOutfitGroup(AmariOutfitGroupListItem group, ScrollView tabScrollView, VisualElement root)
+        {
+            if (group == null)
+            {
+                return;
+            }
+
+            _activeOutfitGroupTab = group;
+            BindOutfitGroupPanel(root, group, tabScrollView);
+        }
+
+        private void BindOutfitGroupPanel(VisualElement root, AmariOutfitGroupListItem group, ScrollView tabScrollView)
+        {
+            var outfitGroupNameField = root.Q<TextField>("OutfitGroupNameField");
+            var scaleMultiplyField = root.Q<FloatField>("ScaleMultiply");
+            var outfitListView = root.Q<ListView>("OutfitListView");
+
+            if (group == null)
+            {
+                ClearOutfitGroupPanel(outfitGroupNameField, scaleMultiplyField, outfitListView);
+                return;
+            }
+
+            group.outfitListItems ??= new List<AmariOutfitListItem>();
+
+            if (outfitGroupNameField != null)
+            {
+                outfitGroupNameField.SetValueWithoutNotify(string.IsNullOrWhiteSpace(group.groupName) ? string.Empty : group.groupName);
+                var nameState = GetOrCreateOutfitGroupElementState(outfitGroupNameField);
+                nameState.group = group;
+                if (!nameState.bound)
+                {
+                    nameState.bound = true;
+
+                    void CommitOutfitGroupName()
+                    {
+                        if (outfitGroupNameField.userData is not OutfitGroupElementState state || state.group == null)
+                        {
+                            return;
+                        }
+
+                        var desired = outfitGroupNameField.value?.Trim();
+                        if (string.IsNullOrWhiteSpace(desired))
+                        {
+                            desired = DefaultGroupName;
+                        }
+
+                        if (string.Equals(desired, state.group.groupName, System.StringComparison.Ordinal))
+                        {
+                            return;
+                        }
+
+                        RecordSettingsUndo("Change Outfit Group Name");
+
+                        var uniqueName = GetUnusedOutfitGroupName(desired);
+                        state.group.groupName = uniqueName;
+                        if (!string.Equals(uniqueName, outfitGroupNameField.value, System.StringComparison.Ordinal))
+                        {
+                            outfitGroupNameField.SetValueWithoutNotify(uniqueName);
+                        }
+
+                        MarkSettingsDirty();
+                        RefreshOutfitGroupTabs(tabScrollView, root);
+                    }
+
+                    outfitGroupNameField.RegisterCallback<FocusOutEvent>(_ => CommitOutfitGroupName());
+                    outfitGroupNameField.RegisterCallback<KeyDownEvent>(e =>
+                    {
+                        if (e.keyCode != KeyCode.Return && e.keyCode != KeyCode.KeypadEnter)
+                        {
+                            return;
+                        }
+
+                        CommitOutfitGroupName();
+                    });
+                }
+            }
+
+            if (scaleMultiplyField != null)
+            {
+                scaleMultiplyField.SetValueWithoutNotify(group.scaleMultiply);
+                var scaleState = GetOrCreateOutfitGroupElementState(scaleMultiplyField);
+                scaleState.group = group;
+                if (!scaleState.bound)
+                {
+                    scaleState.bound = true;
+                    scaleMultiplyField.RegisterValueChangedCallback(e =>
+                    {
+                        if (scaleMultiplyField.userData is not OutfitGroupElementState state || state.group == null)
+                        {
+                            return;
+                        }
+
+                        RecordSettingsUndo("Change Outfit Scale");
+                        state.group.scaleMultiply = e.newValue;
+                        ApplyScaleMultiplyToGroup(state.group, true, "Apply Outfit Scale");
+                        MarkSettingsDirty();
+                    });
+                }
+            }
+
+            BindOutfitListViewForGroup(outfitListView, group, root);
+            SetupLocalizationTextOutfit(root);
+        }
+
+        private void ClearOutfitGroupPanel(TextField nameField, FloatField scaleField, ListView listView)
+        {
+            nameField?.SetValueWithoutNotify(string.Empty);
+            scaleField?.SetValueWithoutNotify(1f);
+            if (listView != null)
+            {
+                listView.itemsSource = null;
+                listView.makeItem = null;
+                listView.bindItem = null;
+                listView.Rebuild();
+            }
+        }
+
+        private void BindOutfitListViewForGroup(ListView outfitListView, AmariOutfitGroupListItem group, VisualElement root)
+        {
+            if (outfitListView == null || group == null)
+            {
+                return;
+            }
+
+            group.outfitListItems ??= new List<AmariOutfitListItem>();
+
+            var listViewState = GetOrCreateOutfitListViewState(outfitListView);
+            if (listViewState.group != null && listViewState.group != group)
+            {
+                _groupToListView.Remove(listViewState.group);
+                _outfitListSnapshots.Remove(outfitListView);
+            }
+
+            outfitListView.itemsSource = group.outfitListItems;
+            outfitListView.makeItem = () => outfitItemAsset.Instantiate();
+            outfitListView.virtualizationMethod = CollectionVirtualizationMethod.DynamicHeight;
+            _listViewToTargetList[outfitListView] = group.outfitListItems;
+            UpdateGroupListViewMapping(group, outfitListView);
+            listViewState.group = group;
+
+            outfitListView.bindItem = (element, index) =>
+            {
+                if (!_listViewToTargetList.TryGetValue(outfitListView, out var targetList) || targetList == null)
+                {
+                    return;
+                }
+
+                EnsureListSize(targetList, index);
+                var item = targetList[index];
+                if (item == null)
+                {
+                    item = new AmariOutfitListItem();
+                    targetList[index] = item;
+                }
+
+                var currentGroup = FindOutfitGroupByList(targetList);
+
+                var prefabField = element.Q<EditorObjectField>("OutfitPrefabField");
+                if (prefabField == null)
+                {
+                    Debug.LogError("PrefabField not found in outfit item UXML");
+                    return;
+                }
+
+                prefabField.objectType = typeof(GameObject);
+                prefabField.allowSceneObjects = false;
+                prefabField.SetValueWithoutNotify(item.prefab);
+                var prefabState = GetOrCreateOutfitItemElementState(prefabField);
+                prefabState.item = item;
+                prefabState.group = currentGroup;
+                if (!prefabState.bound)
+                {
+                    prefabState.bound = true;
+                    prefabField.RegisterValueChangedCallback(e =>
+                    {
+                        if (prefabField.userData is not OutfitItemElementState state || state.item == null)
+                        {
+                            return;
+                        }
+
+                        var newPrefab = e.newValue as GameObject;
+                        OnOutfitPrefabValueChanged(prefabField, state.item, newPrefab, state.group);
+                    });
+                }
+
+                var previewButton = element.Q<Button>("OutfitPreviewStatusButton");
+                if (previewButton != null)
+                {
+                    SetPreviewButtonState(previewButton, _avatarSettings.activePreviewOutfit == item);
+                    var previewState = GetOrCreateOutfitItemElementState(previewButton);
+                    previewState.item = item;
+                    previewState.listView = outfitListView;
+                    if (!previewState.bound)
+                    {
+                        previewState.bound = true;
+                        previewButton.clicked += () =>
+                        {
+                            if (previewButton.userData is not OutfitItemElementState state || state.item == null)
+                            {
+                                return;
+                            }
+
+                            if (state.item.instance == null)
+                            {
+                                return;
+                            }
+
+                            RecordSettingsUndo("Change Active Preview Outfit");
+                            _avatarSettings.activePreviewOutfit = state.item;
+                            UpdatePreviewInstanceActiveStates(true, "Change Active Preview Outfit");
+                            MarkSettingsDirty();
+                            state.listView?.RefreshItems();
+                        };
+                    }
+                }
+
+                var includeInBuildTitle = element.Q<Label>("IncludeInBuildTitle");
+                if (includeInBuildTitle != null)
+                {
+                    includeInBuildTitle.text = AmariLocalization.Get("amari.window.avatarCustomize.includeInBuildTitle");
+                }
+
+                var outfitInfoButton = element.Q<Button>("OutfitInfoButton");
+                if (outfitInfoButton != null)
+                {
+                    var needsAttention = ShouldNotifyOutfitInfo(item);
+                    SetOutfitInfoButtonState(outfitInfoButton, needsAttention);
+                    BindOutfitInfoButton(outfitInfoButton, item, OnOutfitInfoButtonClicked);
+                }
+
+                var includeInBuildToggle = element.Q<Toggle>("IncludeInBuildToggle");
+                if (includeInBuildToggle != null)
+                {
+                    var includeInBuild = item.instance != null && !item.instance.CompareTag("EditorOnly");
+                    includeInBuildToggle.SetValueWithoutNotify(includeInBuild);
+                    var includeState = GetOrCreateOutfitItemElementState(includeInBuildToggle);
+                    includeState.item = item;
+                    if (!includeState.bound)
+                    {
+                        includeState.bound = true;
+                        includeInBuildToggle.RegisterValueChangedCallback(e =>
+                        {
+                            if (includeInBuildToggle.userData is not OutfitItemElementState state || state.item == null)
+                            {
+                                return;
+                            }
+
+                            if (state.item.instance == null)
+                            {
+                                includeInBuildToggle.SetValueWithoutNotify(false);
+                                return;
+                            }
+
+                            Undo.RecordObject(state.item.instance, "Toggle Include In Build");
+                            state.item.instance.tag = e.newValue ? "Untagged" : "EditorOnly";
+                            MarkObjectDirty(state.item.instance);
+                        });
+                    }
+                }
+            };
+
+            if (!listViewState.bound)
+            {
+                listViewState.bound = true;
+
+                outfitListView.itemsRemoved += indices =>
+                {
+                    if (outfitListView.userData is not OutfitListViewState state || state.group?.outfitListItems == null)
+                    {
+                        return;
+                    }
+
+                    RecordSettingsUndo("Remove Outfit Prefab");
+                    if (!_outfitListSnapshots.TryGetValue(outfitListView, out var snapshot))
+                    {
+                        snapshot = state.group.outfitListItems.ToList();
+                    }
+
+                    foreach (var i in indices)
+                    {
+                        if (i < 0 || i >= snapshot.Count)
+                        {
+                            continue;
+                        }
+
+                        var item = snapshot[i];
+                        if (item == null || !item.instance)
+                        {
+                            continue;
+                        }
+
+                        Undo.DestroyObjectImmediate(item.instance);
+                        if (_avatarSettings.activePreviewOutfit == item)
+                        {
+                            OnActivePreviewOutfitDestroy(item, true, "Remove Outfit Prefab");
+                        }
+                    }
+
+                    MarkSettingsDirty();
+                    _outfitListSnapshots[outfitListView] = state.group.outfitListItems.ToList();
+                };
+
+                RegisterGroupDragTargets(outfitListView);
+            }
+
+            ApplyScaleMultiplyToGroup(group);
+            _outfitListSnapshots[outfitListView] = group.outfitListItems.ToList();
+            outfitListView.Rebuild();
         }
     }
 }
