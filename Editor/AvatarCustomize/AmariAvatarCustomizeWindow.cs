@@ -226,6 +226,19 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             _avatarSettings = instance.GetComponent<AmariAvatarSettings>();
             Undo.RegisterCreatedObjectUndo(instance, "Create Avatar Settings");
+
+            // 生成直後に衣装グループが未設定なら空要素を1つ追加
+            var outfitGroups = _avatarSettings.OutfitListGroupItems;
+            if (outfitGroups != null && outfitGroups.Count == 0)
+            {
+                Undo.RecordObject(_avatarSettings, "Initialize Outfit Group");
+                outfitGroups.Add(new AmariOutfitGroupListItem
+                {
+                    groupName = string.Empty,
+                    outfitListItems = new List<AmariOutfitListItem>()
+                });
+            }
+
             MarkSettingsDirty();
         }
         #endregion

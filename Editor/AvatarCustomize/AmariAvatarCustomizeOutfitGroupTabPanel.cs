@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using com.amari_noa.avatar_modular_assistant.runtime;
-using UnityEditor.Search;
 using UnityEngine;
 using UnityEngine.UIElements;
 using EditorObjectField = UnityEditor.UIElements.ObjectField;
@@ -116,6 +115,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 var removeButton = tabElement.Q<Button>("OutfitGroupRemoveButton");
                 if (removeButton != null)
                 {
+                    // グループが1つしかない場合は削除できないようにする
+                    removeButton.SetEnabled(_avatarSettings.OutfitListGroupItems.Count > 1);
                     var state = GetOrCreateOutfitGroupElementState(removeButton);
                     state.group = group;
                     if (!state.bound)
