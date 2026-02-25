@@ -9,7 +9,7 @@ It focuses on organizing, previewing, and preparing avatar modifications without
 ## Feature Overview
 
 
-<img alt="Editor" src="https://raw.githubusercontent.com/AmariNoa/Avatar-Modular-Assistant-for-Refinement-Integration/refs/heads/develop/0.1.x/Documentation%7E/Images/AMARI_CustomizeWindow_v0_1_0_for_README.png">
+<img alt="Editor" src="https://raw.githubusercontent.com/AmariNoa/Avatar-Modular-Assistant-for-Refinement-Integration/refs/heads/main/Documentation%7E/Images/AMARI_CustomizeWindow_v0_1_0_for_README.png">
 
 
 ### Outfit Management
