@@ -6,6 +6,26 @@ It focuses on organizing, previewing, and preparing avatar modifications without
 
 ---
 
+## VPM Support
+
+This project supports VPM (VRChat Package Manager).
+
+### Add Repository to VCC
+
+To add this repository to VCC, click the link below:
+
+[Add to VCC](vcc://vpm/addRepo?url=https%3A%2F%2Famarinoa.github.io%2FAmariNoa-VPM-Listing%2Findex.json)
+
+If your browser asks for permission, allow it to open VCC.
+
+### View Package Listing
+
+To browse the package listing manually, visit:
+
+[AmariNoa VPM Listing](https://amarinoa.github.io/AmariNoa-VPM-Listing/)
+
+---
+
 ## Feature Overview
 
 
@@ -40,10 +60,3 @@ It focuses on organizing, previewing, and preparing avatar modifications without
 ### Material Batch Replacement
 - Planned functionality for bulk material reassignment
 - Intended to streamline large-scale visual adjustments
-
----
-
-## VPM Support
-
-VPM (VRChat Package Manager) is not supported at this time.  
-Support is currently under consideration and may be added in a future update.
