@@ -3,7 +3,8 @@
     "rootNamespace": "com.amari_noa.avatar_modular_assistant.editor.integrations.modular_avatar",
     "references": [
         "GUID:fc900867c0f47cd49b6e2ae4ef907300",
-        "GUID:0c825f95da9c30544a36d92979fcae14"
+        "GUID:0c825f95da9c30544a36d92979fcae14",
+        "GUID:2d508b1091d66904ea58f954df25ba7e"
     ],
     "includePlatforms": [
         "Editor"

@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using com.amari_noa.avatar_modular_assistant.runtime;
+using com.amari_noa.avatar_modular_assistant.editor.integrations.modular_avatar;
 using UnityEngine.UIElements;
 using Object = UnityEngine.Object;
 using VRC.SDK3.Avatars.Components;
@@ -30,6 +31,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
         private readonly Dictionary<ListView, List<AmariOutfitListItem>> _outfitListSnapshots = new();
         private readonly Dictionary<AmariOutfitGroupListItem, ListView> _groupToListView = new();
         private readonly Dictionary<ListView, List<AmariOutfitListItem>> _listViewToTargetList = new();
+        private readonly Dictionary<AmariOutfitListItem, AmariModularAvatarCheckResult> _outfitCheckResults = new();
         private readonly HashSet<VisualElement> _dragTargets = new();
         private static VRCAvatarDescriptor _pendingAvatarDescriptor;
 
@@ -273,8 +275,6 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             // OutfitList ----------
             BuildOutfitGroupTabPanel(root);
-
-            BindOutfitList(root);
         }
     }
 }

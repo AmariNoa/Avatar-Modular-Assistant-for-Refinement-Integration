@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using com.amari_noa.avatar_modular_assistant.runtime;
+using com.amari_noa.avatar_modular_assistant.editor.integrations.modular_avatar;
 using UnityEngine;
 using UnityEngine.UIElements;
 using EditorObjectField = UnityEditor.UIElements.ObjectField;
@@ -380,6 +381,41 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
         }
 
+        private void UpdateOutfitCheckResultsForGroup(AmariOutfitGroupListItem group)
+        {
+            if (group?.outfitListItems == null)
+            {
+                return;
+            }
+
+            foreach (var item in group.outfitListItems)
+            {
+                if (item != null)
+                {
+                    _outfitCheckResults.Remove(item);
+                }
+            }
+
+            if (!AmariModularAvatarIntegration.IsInstalled())
+            {
+                return;
+            }
+
+            var checkResults = AmariModularAvatarIntegration.CheckGroup(group);
+            foreach (var item in group.outfitListItems)
+            {
+                if (item?.instance == null)
+                {
+                    continue;
+                }
+
+                if (checkResults.TryGetValue(item.instance, out var result))
+                {
+                    _outfitCheckResults[item] = result;
+                }
+            }
+        }
+
         private void BindOutfitListViewForGroup(ListView outfitListView, AmariOutfitGroupListItem group, VisualElement root)
         {
             if (outfitListView == null || group == null)
@@ -402,6 +438,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             _listViewToTargetList[outfitListView] = group.outfitListItems;
             UpdateGroupListViewMapping(group, outfitListView);
             listViewState.group = group;
+            UpdateOutfitCheckResultsForGroup(group);
 
             outfitListView.bindItem = (element, index) =>
             {
