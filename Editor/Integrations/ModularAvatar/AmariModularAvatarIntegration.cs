@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using com.amari_noa.avatar_modular_assistant.runtime;
 using UnityEngine;
 using nadena.dev.modular_avatar.core;
-using VRC.SDK3.Avatars.Components;
 
 // ReSharper disable once CheckNamespace
 namespace com.amari_noa.avatar_modular_assistant.editor.integrations.modular_avatar
@@ -78,6 +77,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.modular_ava
         }
         */
 
+        // TODO AvatarDescriptorではなく本ツールのSettingsを使う形で再実装したい
+        /*
         public static Dictionary<GameObject, AmariModularAvatarCheckResult> CheckAvatar(VRCAvatarDescriptor avatarRoot)
         {
             var result = new Dictionary<GameObject, AmariModularAvatarCheckResult>();
@@ -91,6 +92,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.modular_ava
 
             return result;
         }
+        */
 
         public static Dictionary<GameObject, AmariModularAvatarCheckResult> CheckGroup(AmariOutfitGroupListItem group)
         {
