@@ -3,10 +3,10 @@
   "amari": {
     "window": {
       "avatarCustomize": {
-        "panelOutfitTitle": "Outfit Group List",
+        "panelItemTitle": "Item List",
         "editorLanguageLabel": "Language:",
         "includeInBuildTitle": "Include In Build",
-        "outfitGroupNameLabel": "Outfit Group Name",
+        "itemGroupNameLabel": "Item Group Name",
         "scaleMultiplyLabel": "Scale Multiply",
         "previewButtonPreview": "Preview",
         "previewButtonPreviewing": "Previewing"

@@ -7,11 +7,11 @@ MonoImporter:
   - m_ViewDataDictionary: {instanceID: 0}
   - visualTreeAsset: {fileID: 9197481963319205126, guid: 17292a1aaed9cdc41bb0971e127f0f15,
       type: 3}
-  - outfitGroupTabItemAsset: {fileID: 9197481963319205126, guid: 72dbdf4d8a6200a46ae2982a59da4ad7,
+  - itemGroupTabItemAsset: {fileID: 9197481963319205126, guid: 72dbdf4d8a6200a46ae2982a59da4ad7,
       type: 3}
-  - outfitGroupItemAsset: {fileID: 9197481963319205126, guid: 34ec1132788713142bdc5c7dbc4ee602,
+  - itemGroupItemAsset: {fileID: 9197481963319205126, guid: 34ec1132788713142bdc5c7dbc4ee602,
       type: 3}
-  - outfitItemAsset: {fileID: 9197481963319205126, guid: 206bad32e04c60e438f30ea2a312c1ae,
+  - itemItemAsset: {fileID: 9197481963319205126, guid: 206bad32e04c60e438f30ea2a312c1ae,
       type: 3}
   executionOrder: 0
   icon: {instanceID: 0}

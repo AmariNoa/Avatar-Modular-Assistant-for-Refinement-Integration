@@ -14,84 +14,84 @@ namespace com.amari_noa.avatar_modular_assistant.editor
     public partial class AmariAvatarCustomizeWindow
     {
         private const string DefaultGroupName = "Default";
-        private static Texture2D OutfitInfoIconNormal;
-        private static Texture2D OutfitInfoIconNotify;
-        private static Texture2D OutfitInfoIconProblem;
-        private static bool _outfitIconsLoaded;
+        private static Texture2D ItemInfoIconNormal;
+        private static Texture2D ItemInfoIconNotify;
+        private static Texture2D ItemInfoIconProblem;
+        private static bool _itemIconsLoaded;
 
-        private sealed class OutfitInfoButtonState
+        private sealed class ItemInfoButtonState
         {
             public bool bound;
-            public AmariOutfitListItem item;
+            public AmariItemListItem item;
         }
 
-        private sealed class OutfitItemElementState
+        private sealed class ItemItemElementState
         {
             public bool bound;
-            public AmariOutfitListItem item;
-            public AmariOutfitGroupListItem group;
+            public AmariItemListItem item;
+            public AmariItemGroupListItem group;
             public ListView listView;
         }
 
-        private sealed class OutfitGroupElementState
+        private sealed class ItemGroupElementState
         {
             public bool bound;
-            public AmariOutfitGroupListItem group;
+            public AmariItemGroupListItem group;
         }
 
-        private sealed class OutfitListViewState
+        private sealed class ItemListViewState
         {
             public bool bound;
-            public AmariOutfitGroupListItem group;
+            public AmariItemGroupListItem group;
         }
 
-        private static void EnsureOutfitIconsLoaded()
+        private static void EnsureItemIconsLoaded()
         {
-            if (_outfitIconsLoaded)
+            if (_itemIconsLoaded)
             {
                 return;
             }
 
-            OutfitInfoIconNormal = EditorGUIUtility.IconContent("console.infoicon.sml").image as Texture2D;
-            OutfitInfoIconNotify = EditorGUIUtility.IconContent("console.warnicon.sml").image as Texture2D;
-            OutfitInfoIconProblem = EditorGUIUtility.IconContent("console.erroricon.sml").image as Texture2D;
+            ItemInfoIconNormal = EditorGUIUtility.IconContent("console.infoicon.sml").image as Texture2D;
+            ItemInfoIconNotify = EditorGUIUtility.IconContent("console.warnicon.sml").image as Texture2D;
+            ItemInfoIconProblem = EditorGUIUtility.IconContent("console.erroricon.sml").image as Texture2D;
 
-            _outfitIconsLoaded = true;
+            _itemIconsLoaded = true;
         }
 
-        private void EnsureActivePreviewOutfit()
+        private void EnsureActivePreviewItem()
         {
-            if (_avatarSettings.OutfitListGroupItems == null)
+            if (_avatarSettings.ItemListGroupItems == null)
             {
-                _avatarSettings.activePreviewOutfit = null;
+                _avatarSettings.activePreviewItem = null;
                 return;
             }
 
-            var active = _avatarSettings.activePreviewOutfit;
-            if (active == null || !EnumerateAllOutfitItems().Contains(active) || active.instance == null)
+            var active = _avatarSettings.activePreviewItem;
+            if (active == null || !EnumerateAllItemItems().Contains(active) || active.instance == null)
             {
-                active = EnumerateAllOutfitItems().FirstOrDefault(item => item.instance != null);
-                _avatarSettings.activePreviewOutfit = active;
+                active = EnumerateAllItemItems().FirstOrDefault(item => item.instance != null);
+                _avatarSettings.activePreviewItem = active;
             }
 
             UpdatePreviewInstanceActiveStates();
         }
 
-        private static void SetOutfitListItemValues(AmariOutfitListItem item, GameObject prefab, string guid, GameObject instance)
+        private static void SetItemListItemValues(AmariItemListItem item, GameObject prefab, string guid, GameObject instance)
         {
             item.prefab = prefab;
             item.prefabGuid = guid;
             item.instance = instance;
         }
 
-        private IEnumerable<AmariOutfitListItem> EnumerateAllOutfitItems()
+        private IEnumerable<AmariItemListItem> EnumerateAllItemItems()
         {
-            if (_avatarSettings?.OutfitListGroupItems == null)
+            if (_avatarSettings?.ItemListGroupItems == null)
             {
                 yield break;
             }
 
-            foreach (var item in _avatarSettings.OutfitListGroupItems.Where(group => group?.outfitListItems != null).SelectMany(group => group.outfitListItems.Where(item => item != null)))
+            foreach (var item in _avatarSettings.ItemListGroupItems.Where(group => group?.itemListItems != null).SelectMany(group => group.itemListItems.Where(item => item != null)))
             {
                 yield return item;
             }
@@ -99,23 +99,23 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
         private bool IsDuplicatePrefab(string guid)
         {
-            return string.IsNullOrWhiteSpace(guid) || EnumerateAllOutfitItems().Any(item => string.Equals(item.prefabGuid, guid, System.StringComparison.Ordinal));
+            return string.IsNullOrWhiteSpace(guid) || EnumerateAllItemItems().Any(item => string.Equals(item.prefabGuid, guid, System.StringComparison.Ordinal));
         }
 
-        private bool IsDuplicatePrefab(string guid, AmariOutfitListItem self)
+        private bool IsDuplicatePrefab(string guid, AmariItemListItem self)
         {
-            return string.IsNullOrWhiteSpace(guid) || EnumerateAllOutfitItems().Any(item => item != self && string.Equals(item.prefabGuid, guid, System.StringComparison.Ordinal));
+            return string.IsNullOrWhiteSpace(guid) || EnumerateAllItemItems().Any(item => item != self && string.Equals(item.prefabGuid, guid, System.StringComparison.Ordinal));
         }
 
-        private void OnActivePreviewOutfitDestroy(AmariOutfitListItem item, bool registerUndo = false, string undoName = null)
+        private void OnActivePreviewItemDestroy(AmariItemListItem item, bool registerUndo = false, string undoName = null)
         {
             if (registerUndo)
             {
-                RecordSettingsUndo(undoName ?? "Change Active Preview Outfit");
+                RecordSettingsUndo(undoName ?? "Change Active Preview Item");
             }
 
-            var next = EnumerateAllOutfitItems().FirstOrDefault(ti => ti != item && ti.instance);
-            _avatarSettings.activePreviewOutfit = next;
+            var next = EnumerateAllItemItems().FirstOrDefault(ti => ti != item && ti.instance);
+            _avatarSettings.activePreviewItem = next;
             UpdatePreviewInstanceActiveStates(registerUndo, undoName);
 
             if (registerUndo)
@@ -124,27 +124,27 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
         }
 
-        private bool CheckOrActivatePreviewOutfit(AmariOutfitListItem item, bool registerUndo = false, string undoName = null)
+        private bool CheckOrActivatePreviewItem(AmariItemListItem item, bool registerUndo = false, string undoName = null)
         {
-            if (_avatarSettings.activePreviewOutfit != null)
+            if (_avatarSettings.activePreviewItem != null)
             {
                 // アクティブが存在してもリスト外・実体無しなら無効化
-                var active = _avatarSettings.activePreviewOutfit;
-                if (EnumerateAllOutfitItems().Contains(active) && active.instance)
+                var active = _avatarSettings.activePreviewItem;
+                if (EnumerateAllItemItems().Contains(active) && active.instance)
                 {
                     return false;
                 }
 
-                _avatarSettings.activePreviewOutfit = null;
+                _avatarSettings.activePreviewItem = null;
             }
 
             // アクティブが存在しなければ更新アイテムをアクティブとして扱う
             if (registerUndo)
             {
-                RecordSettingsUndo(undoName ?? "Change Active Preview Outfit");
+                RecordSettingsUndo(undoName ?? "Change Active Preview Item");
             }
 
-            _avatarSettings.activePreviewOutfit = item;
+            _avatarSettings.activePreviewItem = item;
             UpdatePreviewInstanceActiveStates(registerUndo, undoName);
 
             if (registerUndo)
@@ -157,8 +157,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
         private void UpdatePreviewInstanceActiveStates(bool registerUndo = false, string undoName = null)
         {
-            var active = _avatarSettings.activePreviewOutfit;
-            foreach (var item in EnumerateAllOutfitItems())
+            var active = _avatarSettings.activePreviewItem;
+            foreach (var item in EnumerateAllItemItems())
             {
                 if (item.instance == null)
                 {
@@ -167,7 +167,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
                 if (registerUndo)
                 {
-                    Undo.RecordObject(item.instance, undoName ?? "Toggle Preview Outfit");
+                    Undo.RecordObject(item.instance, undoName ?? "Toggle Preview Item");
                     MarkObjectDirty(item.instance);
                 }
 
@@ -189,72 +189,72 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             button.style.backgroundColor = isPreviewing ? new StyleColor(new Color(0.0f, 0.6f, 0.0f)) : new StyleColor(new Color(0.6f, 0.0f, 0.0f));
         }
 
-        private static void SetOutfitInfoButtonState(Button button, bool needsAttention)
+        private static void SetItemInfoButtonState(Button button, bool needsAttention)
         {
             if (button == null)
             {
                 return;
             }
 
-            EnsureOutfitIconsLoaded();
+            EnsureItemIconsLoaded();
 
             button.text = string.Empty;
-            var icon = needsAttention ? OutfitInfoIconProblem : OutfitInfoIconNormal;
+            var icon = needsAttention ? ItemInfoIconProblem : ItemInfoIconNormal;
             if (icon != null)
             {
                 button.style.backgroundImage = new StyleBackground(icon);
             }
         }
 
-        private static OutfitInfoButtonState GetOrCreateOutfitInfoButtonState(Button button)
+        private static ItemInfoButtonState GetOrCreateItemInfoButtonState(Button button)
         {
-            if (button.userData is OutfitInfoButtonState state)
+            if (button.userData is ItemInfoButtonState state)
             {
                 return state;
             }
 
-            state = new OutfitInfoButtonState();
+            state = new ItemInfoButtonState();
             button.userData = state;
             return state;
         }
 
-        private static OutfitItemElementState GetOrCreateOutfitItemElementState(VisualElement element)
+        private static ItemItemElementState GetOrCreateItemItemElementState(VisualElement element)
         {
-            if (element.userData is OutfitItemElementState state)
+            if (element.userData is ItemItemElementState state)
             {
                 return state;
             }
 
-            state = new OutfitItemElementState();
+            state = new ItemItemElementState();
             element.userData = state;
             return state;
         }
 
-        private static OutfitGroupElementState GetOrCreateOutfitGroupElementState(VisualElement element)
+        private static ItemGroupElementState GetOrCreateItemGroupElementState(VisualElement element)
         {
-            if (element.userData is OutfitGroupElementState state)
+            if (element.userData is ItemGroupElementState state)
             {
                 return state;
             }
 
-            state = new OutfitGroupElementState();
+            state = new ItemGroupElementState();
             element.userData = state;
             return state;
         }
 
-        private static OutfitListViewState GetOrCreateOutfitListViewState(ListView listView)
+        private static ItemListViewState GetOrCreateItemListViewState(ListView listView)
         {
-            if (listView.userData is OutfitListViewState state)
+            if (listView.userData is ItemListViewState state)
             {
                 return state;
             }
 
-            state = new OutfitListViewState();
+            state = new ItemListViewState();
             listView.userData = state;
             return state;
         }
 
-        private void UpdateGroupListViewMapping(AmariOutfitGroupListItem group, ListView listView)
+        private void UpdateGroupListViewMapping(AmariItemGroupListItem group, ListView listView)
         {
             if (group == null || listView == null)
             {
@@ -270,14 +270,14 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             _groupToListView[group] = listView;
         }
 
-        private static void BindOutfitInfoButton(Button button, AmariOutfitListItem item, System.Action<AmariOutfitListItem> onClick)
+        private static void BindItemInfoButton(Button button, AmariItemListItem item, System.Action<AmariItemListItem> onClick)
         {
             if (button == null)
             {
                 return;
             }
 
-            var state = GetOrCreateOutfitInfoButtonState(button);
+            var state = GetOrCreateItemInfoButtonState(button);
             state.item = item;
 
             if (state.bound)
@@ -288,7 +288,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             state.bound = true;
             button.clicked += () =>
             {
-                if (button.userData is not OutfitInfoButtonState s || s.item == null)
+                if (button.userData is not ItemInfoButtonState s || s.item == null)
                 {
                     return;
                 }
@@ -297,7 +297,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             };
         }
 
-        private static void OnOutfitInfoButtonClicked(AmariOutfitListItem item)
+        private static void OnItemInfoButtonClicked(AmariItemListItem item)
         {
             // TODO: implement the actual behavior to guide the user to pending actions.
             if (item == null)
@@ -305,17 +305,17 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 return;
             }
 
-            Debug.Log($"[AMARI] Outfit info clicked: {item.prefabGuid}");
+            Debug.Log($"[AMARI] Item info clicked: {item.prefabGuid}");
         }
 
-        private bool ShouldNotifyOutfitInfo(AmariOutfitListItem item)
+        private bool ShouldNotifyItemInfo(AmariItemListItem item)
         {
             if (item == null)
             {
                 return false;
             }
 
-            if (!_outfitCheckResults.TryGetValue(item, out var result))
+            if (!_itemCheckResults.TryGetValue(item, out var result))
             {
                 return false;
             }
@@ -332,7 +332,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             if (registerUndo)
             {
-                Undo.RecordObject(instance, undoName ?? "Toggle Preview Outfit");
+                Undo.RecordObject(instance, undoName ?? "Toggle Preview Item");
             }
 
             instance.SetActive(isActive);
@@ -343,7 +343,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
         }
 
-        private GameObject UpdatePrefabInstanceInScene(AmariOutfitListItem item, GameObject newPrefab, bool registerUndo = false, string undoName = null)
+        private GameObject UpdatePrefabInstanceInScene(AmariItemListItem item, GameObject newPrefab, bool registerUndo = false, string undoName = null)
         {
             if (item.instance)
             {
@@ -359,7 +359,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             if (!newPrefab)
             {
-                OnActivePreviewOutfitDestroy(item, registerUndo, undoName);
+                OnActivePreviewItemDestroy(item, registerUndo, undoName);
                 return null;
             }
 
@@ -369,39 +369,39 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             if (registerUndo)
             {
-                Undo.RegisterCreatedObjectUndo(instance, undoName ?? "Create Outfit Prefab");
+                Undo.RegisterCreatedObjectUndo(instance, undoName ?? "Create Item Prefab");
                 MarkObjectDirty(instance);
             }
 
             return instance;
         }
 
-        private void OnOutfitPrefabAdded(List<AmariOutfitListItem> targetList, GameObject prefab, string guid)
+        private void OnItemPrefabAdded(List<AmariItemListItem> targetList, GameObject prefab, string guid)
         {
-            RecordSettingsUndo("Add Outfit Prefab");
+            RecordSettingsUndo("Add Item Prefab");
 
-            var item = new AmariOutfitListItem();
+            var item = new AmariItemListItem();
 
-            var instance = UpdatePrefabInstanceInScene(item, prefab, true, "Create Outfit Prefab");
-            SetOutfitListItemValues(item, prefab, guid, instance);
-            ApplyScaleMultiplyToItem(FindOutfitGroupByList(targetList), item, true, "Apply Outfit Scale");
+            var instance = UpdatePrefabInstanceInScene(item, prefab, true, "Create Item Prefab");
+            SetItemListItemValues(item, prefab, guid, instance);
+            ApplyScaleMultiplyToItem(FindItemGroupByList(targetList), item, true, "Apply Item Scale");
 
-            var shouldActivate = CheckOrActivatePreviewOutfit(item, true, "Change Active Preview Outfit");
-            SetInstanceActive(instance, shouldActivate, true, "Change Active Preview Outfit");
+            var shouldActivate = CheckOrActivatePreviewItem(item, true, "Change Active Preview Item");
+            SetInstanceActive(instance, shouldActivate, true, "Change Active Preview Item");
 
             targetList.Add(item);
             MarkSettingsDirty();
         }
 
-        private void OnOutfitPrefabValueChanged(EditorObjectField prefabField, AmariOutfitListItem item, GameObject prefab, AmariOutfitGroupListItem group)
+        private void OnItemPrefabValueChanged(EditorObjectField prefabField, AmariItemListItem item, GameObject prefab, AmariItemGroupListItem group)
         {
-            RecordSettingsUndo("Change Outfit Prefab");
+            RecordSettingsUndo("Change Item Prefab");
 
             if (!prefab || !IsPrefabAsset(prefab))
             {
                 // TODO 要挙動チェック 警告ダイアログを出す必要があるかも？
                 prefabField.SetValueWithoutNotify(null);
-                SetOutfitListItemValues(item, null, string.Empty, null);
+                SetItemListItemValues(item, null, string.Empty, null);
                 MarkSettingsDirty();
                 return;
             }
@@ -414,13 +414,13 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 return;
             }
 
-            var instance = UpdatePrefabInstanceInScene(item, prefab, true, "Change Outfit Prefab");
-            SetOutfitListItemValues(item, prefab, newGuid, instance);
-            ApplyScaleMultiplyToItem(group, item, true, "Apply Outfit Scale");
+            var instance = UpdatePrefabInstanceInScene(item, prefab, true, "Change Item Prefab");
+            SetItemListItemValues(item, prefab, newGuid, instance);
+            ApplyScaleMultiplyToItem(group, item, true, "Apply Item Scale");
 
-            var shouldActivate = CheckOrActivatePreviewOutfit(item, true, "Change Active Preview Outfit");
-            SetInstanceActive(instance, shouldActivate, true, "Change Active Preview Outfit");
-            UpdateOutfitCheckResultsForGroup(group);
+            var shouldActivate = CheckOrActivatePreviewItem(item, true, "Change Active Preview Item");
+            SetInstanceActive(instance, shouldActivate, true, "Change Active Preview Item");
+            UpdateItemCheckResultsForGroup(group);
             if (group != null && _groupToListView.TryGetValue(group, out var listViewForGroup))
             {
                 listViewForGroup.RefreshItems();
@@ -428,16 +428,16 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             MarkSettingsDirty();
         }
 
-        private AmariOutfitGroupListItem FindOutfitGroupByList(List<AmariOutfitListItem> targetList)
+        private AmariItemGroupListItem FindItemGroupByList(List<AmariItemListItem> targetList)
         {
-            if (_avatarSettings?.OutfitListGroupItems == null || targetList == null)
+            if (_avatarSettings?.ItemListGroupItems == null || targetList == null)
             {
                 return null;
             }
 
-            foreach (var group in _avatarSettings.OutfitListGroupItems)
+            foreach (var group in _avatarSettings.ItemListGroupItems)
             {
-                if (group?.outfitListItems == targetList)
+                if (group?.itemListItems == targetList)
                 {
                     return group;
                 }
@@ -446,7 +446,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             return null;
         }
 
-        private static void ApplyScaleMultiplyToItem(AmariOutfitGroupListItem group, AmariOutfitListItem item, bool registerUndo = false, string undoName = null)
+        private static void ApplyScaleMultiplyToItem(AmariItemGroupListItem group, AmariItemListItem item, bool registerUndo = false, string undoName = null)
         {
             if (group == null || item?.instance == null || item.prefab == null)
             {
@@ -456,7 +456,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             var baseScale = item.prefab.transform.localScale;
             if (registerUndo)
             {
-                Undo.RecordObject(item.instance.transform, undoName ?? "Apply Outfit Scale");
+                Undo.RecordObject(item.instance.transform, undoName ?? "Apply Item Scale");
             }
             item.instance.transform.localScale = baseScale * group.scaleMultiply;
             if (registerUndo)
@@ -465,14 +465,14 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
         }
 
-        private static void ApplyScaleMultiplyToGroup(AmariOutfitGroupListItem group, bool registerUndo = false, string undoName = null)
+        private static void ApplyScaleMultiplyToGroup(AmariItemGroupListItem group, bool registerUndo = false, string undoName = null)
         {
-            if (group?.outfitListItems == null)
+            if (group?.itemListItems == null)
             {
                 return;
             }
 
-            foreach (var item in group.outfitListItems)
+            foreach (var item in group.itemListItems)
             {
                 if (item?.instance == null || item.prefab == null)
                 {
@@ -482,7 +482,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 var baseScale = item.prefab.transform.localScale;
                 if (registerUndo)
                 {
-                    Undo.RecordObject(item.instance.transform, undoName ?? "Apply Outfit Scale");
+                    Undo.RecordObject(item.instance.transform, undoName ?? "Apply Item Scale");
                 }
                 item.instance.transform.localScale = baseScale * group.scaleMultiply;
                 if (registerUndo)
@@ -492,7 +492,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
         }
 
-        private bool AddOutfitPrefab(List<AmariOutfitListItem> targetList, GameObject obj)
+        private bool AddItemPrefab(List<AmariItemListItem> targetList, GameObject obj)
         {
             if (!IsPrefabAsset(obj))
             {
@@ -506,9 +506,9 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 return false;
             }
 
-            OnOutfitPrefabAdded(targetList, obj, guid);
-            var group = FindOutfitGroupByList(targetList);
-            UpdateOutfitCheckResultsForGroup(group);
+            OnItemPrefabAdded(targetList, obj, guid);
+            var group = FindItemGroupByList(targetList);
+            UpdateItemCheckResultsForGroup(group);
             if (group != null && _groupToListView.TryGetValue(group, out var listViewForGroup))
             {
                 listViewForGroup.RefreshItems();
@@ -516,7 +516,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             return true;
         }
 
-        private void AddPrefabsFromDrag(Object[] refs, List<AmariOutfitListItem> targetList, ListView listView)
+        private void AddPrefabsFromDrag(Object[] refs, List<AmariItemListItem> targetList, ListView listView)
         {
             if (refs == null || refs.Length == 0)
             {
@@ -526,7 +526,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             var added = false;
             foreach (var obj in refs)
             {
-                if (!AddOutfitPrefab(targetList, (GameObject)obj))
+                if (!AddItemPrefab(targetList, (GameObject)obj))
                 {
                     continue;
                 }
@@ -535,8 +535,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             if (added)
             {
-                var group = FindOutfitGroupByList(targetList);
-                UpdateOutfitCheckResultsForGroup(group);
+                var group = FindItemGroupByList(targetList);
+                UpdateItemCheckResultsForGroup(group);
                 listView.RefreshItems();
             }
         }
@@ -570,7 +570,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     return;
                 }
 
-                var listView = target as ListView ?? target.Q<ListView>("OutfitListView");
+                var listView = target as ListView ?? target.Q<ListView>("ItemListView");
                 if (listView == null)
                 {
                     return;
@@ -587,9 +587,9 @@ namespace com.amari_noa.avatar_modular_assistant.editor
         }
 
         // TODO この命名処理あんまりスマートじゃないのでいつか改修したい
-        private string GetUnusedOutfitGroupName(string groupName = DefaultGroupName)
+        private string GetUnusedItemGroupName(string groupName = DefaultGroupName)
         {
-            var groups = _avatarSettings?.OutfitListGroupItems;
+            var groups = _avatarSettings?.ItemListGroupItems;
             if (groups == null)
             {
                 return groupName;
@@ -621,10 +621,10 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             return groupName;
         }
 
-        private void SetupLocalizationTextOutfit(VisualElement root)
+        private void SetupLocalizationTextItem(VisualElement root)
         {
-            var outfitPanelTitle = root.Q<Label>("OutfitPanelTitle");
-            outfitPanelTitle.text = AmariLocalization.Get("amari.window.avatarCustomize.panelOutfitTitle");
+            var itemPanelTitle = root.Q<Label>("ItemPanelTitle");
+            itemPanelTitle.text = AmariLocalization.Get("amari.window.avatarCustomize.panelItemTitle");
 
             var editorLanguage = root.Q<DropdownField>("EditorLanguage");
             if (editorLanguage != null)
@@ -632,10 +632,10 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 editorLanguage.label = AmariLocalization.Get("amari.window.avatarCustomize.editorLanguageLabel");
             }
 
-            var outfitGroupNameFields = root.Query<TextField>("OutfitGroupNameField").ToList();
-            foreach (var field in outfitGroupNameFields)
+            var itemGroupNameFields = root.Query<TextField>("ItemGroupNameField").ToList();
+            foreach (var field in itemGroupNameFields)
             {
-                field.label = AmariLocalization.Get("amari.window.avatarCustomize.outfitGroupNameLabel");
+                field.label = AmariLocalization.Get("amari.window.avatarCustomize.itemGroupNameLabel");
             }
 
             var scaleMultiplyFields = root.Query<FloatField>("ScaleMultiply").ToList();
@@ -650,7 +650,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 ibTitle.text = AmariLocalization.Get("amari.window.avatarCustomize.includeInBuildTitle");
             }
 
-            var previewButtons = root.Query<Button>("OutfitPreviewStatusButton").ToList();
+            var previewButtons = root.Query<Button>("ItemPreviewStatusButton").ToList();
             if (previewButtons.Count == 0)
             {
                 return;
@@ -662,14 +662,14 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 var parent = button.parent;
                 while (parent != null)
                 {
-                    var prefabField = parent.Q<ObjectField>("OutfitPrefabField");
+                    var prefabField = parent.Q<ObjectField>("ItemPrefabField");
                     if (prefabField != null)
                     {
                         var prefab = prefabField.value as GameObject;
                         if (prefab != null && _avatarSettings != null)
                         {
-                            isPreviewing = _avatarSettings.activePreviewOutfit != null &&
-                                           _avatarSettings.activePreviewOutfit.prefab == prefab;
+                            isPreviewing = _avatarSettings.activePreviewItem != null &&
+                                           _avatarSettings.activePreviewItem.prefab == prefab;
                         }
                         break;
                     }
@@ -680,7 +680,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
         }
 
-        private void ClearOutfitGroupPanel(TextField nameField, FloatField scaleField, ListView listView)
+        private void ClearItemGroupPanel(TextField nameField, FloatField scaleField, ListView listView)
         {
             nameField?.SetValueWithoutNotify(string.Empty);
             scaleField?.SetValueWithoutNotify(1f);
@@ -693,16 +693,16 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
         }
 
-        private void UpdateOutfitCheckResultsForGroup(AmariOutfitGroupListItem group)
+        private void UpdateItemCheckResultsForGroup(AmariItemGroupListItem group)
         {
-            if (group?.outfitListItems == null)
+            if (group?.itemListItems == null)
             {
                 return;
             }
 
-            foreach (var item in group.outfitListItems.Where(item => item != null))
+            foreach (var item in group.itemListItems.Where(item => item != null))
             {
-                _outfitCheckResults.Remove(item);
+                _itemCheckResults.Remove(item);
             }
 
             if (!AmariModularAvatarIntegration.IsInstalled())
@@ -711,42 +711,42 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
 
             var checkResults = AmariModularAvatarIntegration.CheckGroup(group);
-            foreach (var item in group.outfitListItems.Where(item => item?.instance != null))
+            foreach (var item in group.itemListItems.Where(item => item?.instance != null))
             {
                 if (checkResults.TryGetValue(item.instance, out var result))
                 {
-                    _outfitCheckResults[item] = result;
+                    _itemCheckResults[item] = result;
                 }
             }
         }
 
-        private void BindOutfitListViewForGroup(ListView outfitListView, AmariOutfitGroupListItem group)
+        private void BindItemListViewForGroup(ListView itemListView, AmariItemGroupListItem group)
         {
-            if (outfitListView == null || group == null)
+            if (itemListView == null || group == null)
             {
                 return;
             }
 
-            group.outfitListItems ??= new List<AmariOutfitListItem>();
+            group.itemListItems ??= new List<AmariItemListItem>();
 
-            var listViewState = GetOrCreateOutfitListViewState(outfitListView);
+            var listViewState = GetOrCreateItemListViewState(itemListView);
             if (listViewState.group != null && listViewState.group != group)
             {
                 _groupToListView.Remove(listViewState.group);
-                _outfitListSnapshots.Remove(outfitListView);
+                _itemListSnapshots.Remove(itemListView);
             }
 
-            outfitListView.itemsSource = group.outfitListItems;
-            outfitListView.makeItem = () => outfitItemAsset.Instantiate();
-            outfitListView.virtualizationMethod = CollectionVirtualizationMethod.DynamicHeight;
-            _listViewToTargetList[outfitListView] = group.outfitListItems;
-            UpdateGroupListViewMapping(group, outfitListView);
+            itemListView.itemsSource = group.itemListItems;
+            itemListView.makeItem = () => itemItemAsset.Instantiate();
+            itemListView.virtualizationMethod = CollectionVirtualizationMethod.DynamicHeight;
+            _listViewToTargetList[itemListView] = group.itemListItems;
+            UpdateGroupListViewMapping(group, itemListView);
             listViewState.group = group;
-            UpdateOutfitCheckResultsForGroup(group);
+            UpdateItemCheckResultsForGroup(group);
 
-            outfitListView.bindItem = (element, index) =>
+            itemListView.bindItem = (element, index) =>
             {
-                if (!_listViewToTargetList.TryGetValue(outfitListView, out var targetList) || targetList == null)
+                if (!_listViewToTargetList.TryGetValue(itemListView, out var targetList) || targetList == null)
                 {
                     return;
                 }
@@ -759,24 +759,24 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 var item = targetList[index];
                 if (item == null)
                 {
-                    item = new AmariOutfitListItem();
+                    item = new AmariItemListItem();
                     targetList[index] = item;
                     MarkSettingsDirty();
                 }
 
-                var currentGroup = FindOutfitGroupByList(targetList);
+                var currentGroup = FindItemGroupByList(targetList);
 
-                var prefabField = element.Q<EditorObjectField>("OutfitPrefabField");
+                var prefabField = element.Q<EditorObjectField>("ItemPrefabField");
                 if (prefabField == null)
                 {
-                    Debug.LogError("PrefabField not found in outfit item UXML");
+                    Debug.LogError("PrefabField not found in item item UXML");
                     return;
                 }
 
                 prefabField.objectType = typeof(GameObject);
                 prefabField.allowSceneObjects = false;
                 prefabField.SetValueWithoutNotify(item.prefab);
-                var prefabState = GetOrCreateOutfitItemElementState(prefabField);
+                var prefabState = GetOrCreateItemItemElementState(prefabField);
                 prefabState.item = item;
                 prefabState.group = currentGroup;
                 if (!prefabState.bound)
@@ -784,29 +784,29 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     prefabState.bound = true;
                     prefabField.RegisterValueChangedCallback(e =>
                     {
-                        if (prefabField.userData is not OutfitItemElementState state || state.item == null)
+                        if (prefabField.userData is not ItemItemElementState state || state.item == null)
                         {
                             return;
                         }
 
                         var newPrefab = e.newValue as GameObject;
-                        OnOutfitPrefabValueChanged(prefabField, state.item, newPrefab, state.group);
+                        OnItemPrefabValueChanged(prefabField, state.item, newPrefab, state.group);
                     });
                 }
 
-                var previewButton = element.Q<Button>("OutfitPreviewStatusButton");
+                var previewButton = element.Q<Button>("ItemPreviewStatusButton");
                 if (previewButton != null)
                 {
-                    SetPreviewButtonState(previewButton, _avatarSettings.activePreviewOutfit == item);
-                    var previewState = GetOrCreateOutfitItemElementState(previewButton);
+                    SetPreviewButtonState(previewButton, _avatarSettings.activePreviewItem == item);
+                    var previewState = GetOrCreateItemItemElementState(previewButton);
                     previewState.item = item;
-                    previewState.listView = outfitListView;
+                    previewState.listView = itemListView;
                     if (!previewState.bound)
                     {
                         previewState.bound = true;
                         previewButton.clicked += () =>
                         {
-                            if (previewButton.userData is not OutfitItemElementState state || state.item == null)
+                            if (previewButton.userData is not ItemItemElementState state || state.item == null)
                             {
                                 return;
                             }
@@ -816,9 +816,9 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                                 return;
                             }
 
-                            RecordSettingsUndo("Change Active Preview Outfit");
-                            _avatarSettings.activePreviewOutfit = state.item;
-                            UpdatePreviewInstanceActiveStates(true, "Change Active Preview Outfit");
+                            RecordSettingsUndo("Change Active Preview Item");
+                            _avatarSettings.activePreviewItem = state.item;
+                            UpdatePreviewInstanceActiveStates(true, "Change Active Preview Item");
                             MarkSettingsDirty();
                             state.listView?.RefreshItems();
                         };
@@ -831,12 +831,12 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     includeInBuildTitle.text = AmariLocalization.Get("amari.window.avatarCustomize.includeInBuildTitle");
                 }
 
-                var outfitInfoButton = element.Q<Button>("OutfitInfoButton");
-                if (outfitInfoButton != null)
+                var itemInfoButton = element.Q<Button>("ItemInfoButton");
+                if (itemInfoButton != null)
                 {
-                    var needsAttention = ShouldNotifyOutfitInfo(item);
-                    SetOutfitInfoButtonState(outfitInfoButton, needsAttention);
-                    BindOutfitInfoButton(outfitInfoButton, item, OnOutfitInfoButtonClicked);
+                    var needsAttention = ShouldNotifyItemInfo(item);
+                    SetItemInfoButtonState(itemInfoButton, needsAttention);
+                    BindItemInfoButton(itemInfoButton, item, OnItemInfoButtonClicked);
                 }
 
                 var includeInBuildToggle = element.Q<Toggle>("IncludeInBuildToggle");
@@ -844,7 +844,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 {
                     var includeInBuild = item.instance != null && !item.instance.CompareTag("EditorOnly");
                     includeInBuildToggle.SetValueWithoutNotify(includeInBuild);
-                    var includeState = GetOrCreateOutfitItemElementState(includeInBuildToggle);
+                    var includeState = GetOrCreateItemItemElementState(includeInBuildToggle);
                     includeState.item = item;
                     if (includeState.bound)
                     {
@@ -854,7 +854,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     includeState.bound = true;
                     includeInBuildToggle.RegisterValueChangedCallback(e =>
                     {
-                        if (includeInBuildToggle.userData is not OutfitItemElementState state || state.item == null)
+                        if (includeInBuildToggle.userData is not ItemItemElementState state || state.item == null)
                         {
                             return;
                         }
@@ -876,17 +876,17 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             {
                 listViewState.bound = true;
 
-                outfitListView.itemsRemoved += indices =>
+                itemListView.itemsRemoved += indices =>
                 {
-                    if (outfitListView.userData is not OutfitListViewState state || state.group?.outfitListItems == null)
+                    if (itemListView.userData is not ItemListViewState state || state.group?.itemListItems == null)
                     {
                         return;
                     }
 
-                    RecordSettingsUndo("Remove Outfit Prefab");
-                    if (!_outfitListSnapshots.TryGetValue(outfitListView, out var snapshot))
+                    RecordSettingsUndo("Remove Item Prefab");
+                    if (!_itemListSnapshots.TryGetValue(itemListView, out var snapshot))
                     {
-                        snapshot = state.group.outfitListItems.ToList();
+                        snapshot = state.group.itemListItems.ToList();
                     }
 
                     foreach (var i in indices)
@@ -903,27 +903,27 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     }
 
                         Undo.DestroyObjectImmediate(item.instance);
-                        if (_avatarSettings.activePreviewOutfit == item)
+                        if (_avatarSettings.activePreviewItem == item)
                         {
-                            OnActivePreviewOutfitDestroy(item, true, "Remove Outfit Prefab");
+                            OnActivePreviewItemDestroy(item, true, "Remove Item Prefab");
                         }
                     }
 
-                    UpdateOutfitCheckResultsForGroup(state.group);
+                    UpdateItemCheckResultsForGroup(state.group);
                     MarkSettingsDirty();
-                    _outfitListSnapshots[outfitListView] = state.group.outfitListItems.ToList();
+                    _itemListSnapshots[itemListView] = state.group.itemListItems.ToList();
                     if (state.group != null && _groupToListView.TryGetValue(state.group, out var listViewForGroup))
                     {
                         listViewForGroup.RefreshItems();
                     }
                 };
 
-                RegisterGroupDragTargets(outfitListView);
+                RegisterGroupDragTargets(itemListView);
             }
 
             ApplyScaleMultiplyToGroup(group);
-            _outfitListSnapshots[outfitListView] = group.outfitListItems.ToList();
-            outfitListView.Rebuild();
+            _itemListSnapshots[itemListView] = group.itemListItems.ToList();
+            itemListView.Rebuild();
         }
     }
 }

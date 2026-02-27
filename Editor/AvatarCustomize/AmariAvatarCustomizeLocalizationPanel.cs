@@ -19,7 +19,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 }
 
                 AmariLocalization.LoadLanguage(e.newValue);
-                SetupLocalizationTextOutfit(root);  // Outfit panel
+                SetupLocalizationTextItem(root);  // Item panel
             });
         }
     }

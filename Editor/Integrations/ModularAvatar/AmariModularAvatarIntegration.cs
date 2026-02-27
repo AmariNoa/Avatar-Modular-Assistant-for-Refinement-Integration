@@ -12,7 +12,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.modular_ava
     {
         SystemIgnore,
         Accessory,
-        Outfit
+        Item
     }
 
     public enum AmariModularAvatarComponentKind
@@ -95,12 +95,12 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.modular_ava
         }
         */
 
-        public static Dictionary<GameObject, AmariModularAvatarCheckResult> CheckGroup(AmariOutfitGroupListItem group)
+        public static Dictionary<GameObject, AmariModularAvatarCheckResult> CheckGroup(AmariItemGroupListItem group)
         {
             var result = new Dictionary<GameObject, AmariModularAvatarCheckResult>();
             if (group == null) return result;
 
-            foreach (var item in group.outfitListItems)
+            foreach (var item in group.itemListItems)
             {
                 var instance = item.instance;
                 if (instance == null)
@@ -136,13 +136,13 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.modular_ava
             if (existingMa == AmariModularAvatarComponentKind.MergeArmature)
             {
                 return new AmariModularAvatarCheckResult(
-                    kind: AmariModularAvatarPrefabKind.Outfit,
+                    kind: AmariModularAvatarPrefabKind.Item,
                     existingMa: existingMa,
                     suggestion: AmariModularAvatarSuggestedAction.None,
                     hasMesh: HasAnyMesh(prefabRoot),
                     hasBonesInPrefab: HasAnyBonesInsidePrefab(prefabRoot),
                     looksLikeArmatureWithHipsRoot: LooksLikeArmatureWithHipsRoot(prefabRoot),
-                    reason: "MA Merge Armature found on root/first child -> treat as Outfit.");
+                    reason: "MA Merge Armature found on root/first child -> treat as Item.");
             }
 
             var hasMesh = HasAnyMesh(prefabRoot);
@@ -175,13 +175,13 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.modular_ava
             if (armatureWithHips)
             {
                 return new AmariModularAvatarCheckResult(
-                    kind: AmariModularAvatarPrefabKind.Outfit,
+                    kind: AmariModularAvatarPrefabKind.Item,
                     existingMa: AmariModularAvatarComponentKind.None,
                     suggestion: AmariModularAvatarSuggestedAction.AddMergeArmature,
                     hasMesh: true,
                     hasBonesInPrefab: true,
                     looksLikeArmatureWithHipsRoot: true,
-                    reason: "Bones + Armature + root bone is Hips -> Outfit; suggest add MA Merge Armature.");
+                    reason: "Bones + Armature + root bone is Hips -> Item; suggest add MA Merge Armature.");
             }
 
             return new AmariModularAvatarCheckResult(
@@ -300,7 +300,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.modular_ava
                 if (rb == hips || rb.IsChildOf(hips)) return true;
             }
 
-            // rootBone未設定でも「Armature直下がHips」なら衣装形式として扱う
+            // rootBone未設定でも「Armature直下がHips」ならアイテム形式として扱う
             return true;
         }
 

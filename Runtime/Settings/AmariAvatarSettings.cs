@@ -2,21 +2,22 @@ using System;
 using System.Collections.Generic;
 using com.amari_noa.avatar_modular_assistant.editor.integrations;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 // ReSharper disable once CheckNamespace
 namespace com.amari_noa.avatar_modular_assistant.runtime
 {
     [Serializable]
-    public class AmariOutfitGroupListItem
+    public class AmariItemGroupListItem
     {
         public string groupName;
-        public List<AmariOutfitListItem> outfitListItems;
+        public List<AmariItemListItem> itemListItems;
         public float scaleMultiply = 1f;
         public bool includeInBuild = false;
     }
 
     [Serializable]
-    public class AmariOutfitListItem
+    public class AmariItemListItem
     {
         public GameObject prefab;   // 原本プレハブ
         public string prefabGuid;   // プレハブGuid
@@ -29,12 +30,12 @@ namespace com.amari_noa.avatar_modular_assistant.runtime
 
     public class AmariAvatarSettings : MonoBehaviour
     {
-        // 登録衣装一覧
-        [SerializeField, ReadOnly] private List<AmariOutfitGroupListItem> outfitListGroupItems;
-        public List<AmariOutfitGroupListItem> OutfitListGroupItems => outfitListGroupItems ??= new List<AmariOutfitGroupListItem>();
+        // 登録アイテム一覧
+        [SerializeField, ReadOnly] private List<AmariItemGroupListItem> itemListGroupItems;
+        public List<AmariItemGroupListItem> ItemListGroupItems => itemListGroupItems ??= new List<AmariItemGroupListItem>();
 
-        // アクティブな衣装の記録
-        [ReadOnly] public AmariOutfitListItem activePreviewOutfit;
+        // アクティブなアイテムの記録
+        [ReadOnly] public AmariItemListItem activePreviewItem;
 
         // 使うOutfitツールの記録
         [ReadOnly] public AmariOutfitToolType outfitToolType = AmariOutfitToolType.None;

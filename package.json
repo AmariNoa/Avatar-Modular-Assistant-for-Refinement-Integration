@@ -3,7 +3,7 @@
   "displayName": "Avatar Modular Assistant for Refinement & Integration",
   "version": "0.1.0-alpha.1",
   "unity": "2022.3",
-  "description": "A modular avatar editing assistant for VRChat, designed to modify outfits and components as independent modules.",
+  "description": "A modular avatar editing assistant for VRChat, designed to modify items and components as independent modules.",
   "author": {
     "name": "Amari Noa",
     "url": "https://github.com/AmariNoa/Avatar-Modular-Assistant-for-Refinement-Integration"

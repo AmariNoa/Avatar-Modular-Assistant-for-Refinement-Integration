@@ -15,23 +15,23 @@ namespace com.amari_noa.avatar_modular_assistant.editor
     {
         [SerializeField] private VisualTreeAsset visualTreeAsset;
         [Space]
-        [SerializeField] private VisualTreeAsset outfitGroupTabItemAsset;
+        [SerializeField] private VisualTreeAsset itemGroupTabItemAsset;
 
         // TODO 後で消す
-        [SerializeField] private VisualTreeAsset outfitGroupItemAsset;
+        [SerializeField] private VisualTreeAsset itemGroupItemAsset;
 
-        [SerializeField] private VisualTreeAsset outfitItemAsset;
+        [SerializeField] private VisualTreeAsset itemItemAsset;
 
         private VRCAvatarDescriptor _avatarDescriptor;
         private AmariAvatarSettings _avatarSettings;
 
         // TODO 後で消す
-        private ListView _outfitGroupListView;
+        private ListView _itemGroupListView;
 
-        private readonly Dictionary<ListView, List<AmariOutfitListItem>> _outfitListSnapshots = new();
-        private readonly Dictionary<AmariOutfitGroupListItem, ListView> _groupToListView = new();
-        private readonly Dictionary<ListView, List<AmariOutfitListItem>> _listViewToTargetList = new();
-        private readonly Dictionary<AmariOutfitListItem, AmariModularAvatarCheckResult> _outfitCheckResults = new();
+        private readonly Dictionary<ListView, List<AmariItemListItem>> _itemListSnapshots = new();
+        private readonly Dictionary<AmariItemGroupListItem, ListView> _groupToListView = new();
+        private readonly Dictionary<ListView, List<AmariItemListItem>> _listViewToTargetList = new();
+        private readonly Dictionary<AmariItemListItem, AmariModularAvatarCheckResult> _itemCheckResults = new();
         private readonly HashSet<VisualElement> _dragTargets = new();
         private static VRCAvatarDescriptor _pendingAvatarDescriptor;
 
@@ -40,7 +40,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
         private void OnEnable()
         {
-            EnsureOutfitIconsLoaded();
+            EnsureItemIconsLoaded();
             Undo.undoRedoPerformed += OnUndoRedoPerformed;
         }
 
@@ -56,15 +56,15 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 return;
             }
 
-            EnsureActivePreviewOutfit();
+            EnsureActivePreviewItem();
 
-            if (_outfitGroupListView != null)
+            if (_itemGroupListView != null)
             {
-                _outfitGroupListView.itemsSource = _avatarSettings.OutfitListGroupItems;
-                _outfitGroupListView.Rebuild();
+                _itemGroupListView.itemsSource = _avatarSettings.ItemListGroupItems;
+                _itemGroupListView.Rebuild();
             }
 
-            SetupLocalizationTextOutfit(rootVisualElement);
+            SetupLocalizationTextItem(rootVisualElement);
         }
 
         private void RecordSettingsUndo(string actionName)
@@ -229,15 +229,15 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             _avatarSettings = instance.GetComponent<AmariAvatarSettings>();
             Undo.RegisterCreatedObjectUndo(instance, "Create Avatar Settings");
 
-            // 生成直後に衣装グループが未設定なら空要素を1つ追加
-            var outfitGroups = _avatarSettings.OutfitListGroupItems;
-            if (outfitGroups != null && outfitGroups.Count == 0)
+            // 生成直後にアイテムグループが未設定なら空要素を1つ追加
+            var itemGroups = _avatarSettings.ItemListGroupItems;
+            if (itemGroups != null && itemGroups.Count == 0)
             {
-                Undo.RecordObject(_avatarSettings, "Initialize Outfit Group");
-                outfitGroups.Add(new AmariOutfitGroupListItem
+                Undo.RecordObject(_avatarSettings, "Initialize Item Group");
+                itemGroups.Add(new AmariItemGroupListItem
                 {
                     groupName = string.Empty,
-                    outfitListItems = new List<AmariOutfitListItem>()
+                    itemListItems = new List<AmariItemListItem>()
                 });
             }
 
@@ -256,7 +256,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             if (_avatarSettings != null)
             {
-                EnsureActivePreviewOutfit();
+                EnsureActivePreviewItem();
             }
 
             var root = rootVisualElement;
@@ -273,8 +273,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             // SubPanel ----------
             BuildSubPanel(root);
 
-            // OutfitList ----------
-            BuildOutfitGroupTabPanel(root);
+            // ItemList ----------
+            BuildItemGroupTabPanel(root);
         }
     }
 }
