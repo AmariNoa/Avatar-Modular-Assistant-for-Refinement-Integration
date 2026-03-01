@@ -14,6 +14,11 @@ namespace com.amari_noa.avatar_modular_assistant.runtime
         public List<AmariItemListItem> itemListItems;
         public float scaleMultiply = 1f;
         public bool includeInBuild = false;
+
+        // グループ単位のプレビュー設定
+        public bool previewEnabled = true;
+        public bool previewStateInitialized = true;
+        public AmariItemListItem activePreviewItem;
     }
 
     [Serializable]

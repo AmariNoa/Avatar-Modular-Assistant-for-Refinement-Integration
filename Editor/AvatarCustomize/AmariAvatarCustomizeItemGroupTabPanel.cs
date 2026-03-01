@@ -69,7 +69,9 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     {
                         groupName = GetUnusedItemGroupName(),
                         itemListItems = new List<AmariItemListItem>(),
-                        scaleMultiply = 1f
+                        scaleMultiply = 1f,
+                        previewEnabled = true,
+                        previewStateInitialized = true
                     };
                     _avatarSettings.ItemListGroupItems[index] = group;
                     MarkSettingsDirty();
@@ -81,7 +83,44 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     MarkSettingsDirty();
                 }
 
+                if (EnsureGroupActivePreviewItem(group))
+                {
+                    MarkSettingsDirty();
+                }
+
                 var tabElement = itemGroupTabItemAsset.Instantiate();
+                var groupPreviewButton = tabElement.Q<Button>("ItemGroupPreviewButton");
+                if (groupPreviewButton != null)
+                {
+                    SetPreviewButtonState(groupPreviewButton, group.previewEnabled);
+                    var previewState = GetOrCreateItemGroupElementState(groupPreviewButton);
+                    previewState.group = group;
+                    if (!previewState.bound)
+                    {
+                        previewState.bound = true;
+                        groupPreviewButton.clicked += () =>
+                        {
+                            if (groupPreviewButton.userData is not ItemGroupElementState s || s.group == null)
+                            {
+                                return;
+                            }
+
+                            RecordSettingsUndo("Toggle Item Group Preview");
+                            var shouldEnable = !s.group.previewEnabled;
+                            s.group.previewEnabled = shouldEnable;
+                            if (shouldEnable)
+                            {
+                                // OFF中に保持していた最後のプレビュー対象を優先し、無効なら候補を補完
+                                EnsureGroupActivePreviewItem(s.group);
+                            }
+
+                            UpdatePreviewInstanceActiveStates(true, "Toggle Item Group Preview");
+                            MarkSettingsDirty();
+                            RefreshItemGroupTabs(tabScrollView, root);
+                        };
+                    }
+                }
+
                 var nameButton = tabElement.Q<Button>("ItemGroupNameTabButton");
                 if (nameButton != null)
                 {
@@ -155,7 +194,9 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             {
                 groupName = GetUnusedItemGroupName(),
                 itemListItems = new List<AmariItemListItem>(),
-                scaleMultiply = 1f
+                scaleMultiply = 1f,
+                previewEnabled = true,
+                previewStateInitialized = true
             };
 
             _avatarSettings.ItemListGroupItems.Add(newGroup);
@@ -186,11 +227,6 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     if (item?.instance)
                     {
                         Undo.DestroyObjectImmediate(item.instance);
-                    }
-
-                    if (_avatarSettings.activePreviewItem == item)
-                    {
-                        OnActivePreviewItemDestroy(item, true, "Remove Item Group");
                     }
                 }
             }

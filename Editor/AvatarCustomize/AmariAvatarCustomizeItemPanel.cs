@@ -61,20 +61,22 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
         private void EnsureActivePreviewItem()
         {
-            if (_avatarSettings.ItemListGroupItems == null)
+            if (_avatarSettings?.ItemListGroupItems == null)
             {
-                _avatarSettings.activePreviewItem = null;
                 return;
             }
 
-            var active = _avatarSettings.activePreviewItem;
-            if (active == null || !EnumerateAllItemItems().Contains(active) || active.instance == null)
+            var changed = false;
+            foreach (var group in _avatarSettings.ItemListGroupItems.Where(group => group != null))
             {
-                active = EnumerateAllItemItems().FirstOrDefault(item => item.instance != null);
-                _avatarSettings.activePreviewItem = active;
+                changed |= EnsureGroupActivePreviewItem(group);
             }
 
             UpdatePreviewInstanceActiveStates();
+            if (changed)
+            {
+                MarkSettingsDirty();
+            }
         }
 
         private static void SetItemListItemValues(AmariItemListItem item, GameObject prefab, string guid, GameObject instance)
@@ -107,44 +109,96 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             return string.IsNullOrWhiteSpace(guid) || EnumerateAllItemItems().Any(item => item != self && string.Equals(item.prefabGuid, guid, System.StringComparison.Ordinal));
         }
 
-        private void OnActivePreviewItemDestroy(AmariItemListItem item, bool registerUndo = false, string undoName = null)
+        private static bool IsGroupActivePreviewItem(AmariItemGroupListItem group, AmariItemListItem item)
         {
-            if (registerUndo)
-            {
-                RecordSettingsUndo(undoName ?? "Change Active Preview Item");
-            }
-
-            var next = EnumerateAllItemItems().FirstOrDefault(ti => ti != item && ti.instance);
-            _avatarSettings.activePreviewItem = next;
-            UpdatePreviewInstanceActiveStates(registerUndo, undoName);
-
-            if (registerUndo)
-            {
-                MarkSettingsDirty();
-            }
+            return group?.itemListItems != null &&
+                   item != null &&
+                   group.itemListItems.Contains(item) &&
+                   item.instance != null;
         }
 
-        private bool CheckOrActivatePreviewItem(AmariItemListItem item, bool registerUndo = false, string undoName = null)
+        private static AmariItemListItem FindGroupPreviewCandidate(AmariItemGroupListItem group, AmariItemListItem preferredItem = null)
         {
-            if (_avatarSettings.activePreviewItem != null)
+            if (group?.itemListItems == null)
             {
-                // アクティブが存在してもリスト外・実体無しなら無効化
-                var active = _avatarSettings.activePreviewItem;
-                if (EnumerateAllItemItems().Contains(active) && active.instance)
-                {
-                    return false;
-                }
-
-                _avatarSettings.activePreviewItem = null;
+                return null;
             }
 
-            // アクティブが存在しなければ更新アイテムをアクティブとして扱う
+            if (IsGroupActivePreviewItem(group, preferredItem))
+            {
+                return preferredItem;
+            }
+
+            return group.itemListItems.FirstOrDefault(candidate => candidate?.instance != null);
+        }
+
+        private bool EnsureGroupPreviewStateInitialized(AmariItemGroupListItem group)
+        {
+            if (group == null || group.previewStateInitialized)
+            {
+                return false;
+            }
+
+            group.previewEnabled = true;
+            group.previewStateInitialized = true;
+            return true;
+        }
+
+        private bool EnsureGroupActivePreviewItem(AmariItemGroupListItem group, AmariItemListItem preferredItem = null)
+        {
+            if (group == null)
+            {
+                return false;
+            }
+
+            var changed = EnsureGroupPreviewStateInitialized(group);
+            group.itemListItems ??= new List<AmariItemListItem>();
+
+            var active = group.activePreviewItem;
+            if (IsGroupActivePreviewItem(group, active))
+            {
+                return changed;
+            }
+
+            var next = FindGroupPreviewCandidate(group, preferredItem);
+            if (!ReferenceEquals(group.activePreviewItem, next))
+            {
+                group.activePreviewItem = next;
+                changed = true;
+            }
+
+            return changed;
+        }
+
+        private bool IsItemPreviewing(AmariItemGroupListItem group, AmariItemListItem item)
+        {
+            if (group == null || item == null || !group.previewEnabled)
+            {
+                return false;
+            }
+
+            return IsGroupActivePreviewItem(group, group.activePreviewItem) && group.activePreviewItem == item;
+        }
+
+        private void OnActivePreviewItemDestroy(AmariItemGroupListItem group, AmariItemListItem item, bool registerUndo = false, string undoName = null)
+        {
+            if (group == null || item == null)
+            {
+                return;
+            }
+
+            var needsFallback = group.activePreviewItem == item || !IsGroupActivePreviewItem(group, group.activePreviewItem);
+            if (!needsFallback)
+            {
+                return;
+            }
+
             if (registerUndo)
             {
                 RecordSettingsUndo(undoName ?? "Change Active Preview Item");
             }
 
-            _avatarSettings.activePreviewItem = item;
+            group.activePreviewItem = FindGroupPreviewCandidate(group);
             UpdatePreviewInstanceActiveStates(registerUndo, undoName);
 
             if (registerUndo)
@@ -152,28 +206,51 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 MarkSettingsDirty();
             }
 
+        }
+
+        private bool CheckOrActivatePreviewItem(AmariItemGroupListItem group, AmariItemListItem item)
+        {
+            if (group == null || item == null)
+            {
+                return false;
+            }
+
+            EnsureGroupPreviewStateInitialized(group);
+            if (IsGroupActivePreviewItem(group, group.activePreviewItem))
+            {
+                return false;
+            }
+
+            group.activePreviewItem = item;
             return true;
         }
 
         private void UpdatePreviewInstanceActiveStates(bool registerUndo = false, string undoName = null)
         {
-            var active = _avatarSettings.activePreviewItem;
-            foreach (var item in EnumerateAllItemItems())
+            if (_avatarSettings?.ItemListGroupItems == null)
             {
-                if (item.instance == null)
-                {
-                    continue;
-                }
-
-                if (registerUndo)
-                {
-                    Undo.RecordObject(item.instance, undoName ?? "Toggle Preview Item");
-                    MarkObjectDirty(item.instance);
-                }
-
-                item.instance.SetActive(item == active);
+                return;
             }
 
+            foreach (var group in _avatarSettings.ItemListGroupItems.Where(group => group?.itemListItems != null))
+            {
+                var active = IsGroupActivePreviewItem(group, group.activePreviewItem) ? group.activePreviewItem : null;
+                foreach (var item in group.itemListItems.Where(item => item != null))
+                {
+                    if (item.instance == null)
+                    {
+                        continue;
+                    }
+
+                    if (registerUndo)
+                    {
+                        Undo.RecordObject(item.instance, undoName ?? "Toggle Preview Item");
+                        MarkObjectDirty(item.instance);
+                    }
+
+                    item.instance.SetActive(group.previewEnabled && item == active);
+                }
+            }
         }
 
         private static void SetPreviewButtonState(Button button, bool isPreviewing)
@@ -323,26 +400,6 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             return result.Suggestion != AmariModularAvatarSuggestedAction.None;
         }
 
-        private static void SetInstanceActive(GameObject instance, bool isActive, bool registerUndo, string undoName)
-        {
-            if (instance == null)
-            {
-                return;
-            }
-
-            if (registerUndo)
-            {
-                Undo.RecordObject(instance, undoName ?? "Toggle Preview Item");
-            }
-
-            instance.SetActive(isActive);
-
-            if (registerUndo)
-            {
-                MarkObjectDirty(instance);
-            }
-        }
-
         private GameObject UpdatePrefabInstanceInScene(AmariItemListItem item, GameObject newPrefab, bool registerUndo = false, string undoName = null)
         {
             if (item.instance)
@@ -359,7 +416,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             if (!newPrefab)
             {
-                OnActivePreviewItemDestroy(item, registerUndo, undoName);
+                var group = FindItemGroupByItem(item);
+                OnActivePreviewItemDestroy(group, item, registerUndo, undoName);
                 return null;
             }
 
@@ -381,15 +439,14 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             RecordSettingsUndo("Add Item Prefab");
 
             var item = new AmariItemListItem();
+            var group = FindItemGroupByList(targetList);
 
             var instance = UpdatePrefabInstanceInScene(item, prefab, true, "Create Item Prefab");
             SetItemListItemValues(item, prefab, guid, instance);
-            ApplyScaleMultiplyToItem(FindItemGroupByList(targetList), item, true, "Apply Item Scale");
-
-            var shouldActivate = CheckOrActivatePreviewItem(item, true, "Change Active Preview Item");
-            SetInstanceActive(instance, shouldActivate, true, "Change Active Preview Item");
-
             targetList.Add(item);
+            ApplyScaleMultiplyToItem(group, item, true, "Apply Item Scale");
+            CheckOrActivatePreviewItem(group, item);
+            UpdatePreviewInstanceActiveStates();
             MarkSettingsDirty();
         }
 
@@ -418,8 +475,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             SetItemListItemValues(item, prefab, newGuid, instance);
             ApplyScaleMultiplyToItem(group, item, true, "Apply Item Scale");
 
-            var shouldActivate = CheckOrActivatePreviewItem(item, true, "Change Active Preview Item");
-            SetInstanceActive(instance, shouldActivate, true, "Change Active Preview Item");
+            CheckOrActivatePreviewItem(group, item);
+            UpdatePreviewInstanceActiveStates();
             UpdateItemCheckResultsForGroup(group);
             if (group != null && _groupToListView.TryGetValue(group, out var listViewForGroup))
             {
@@ -444,6 +501,17 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
 
             return null;
+        }
+
+        private AmariItemGroupListItem FindItemGroupByItem(AmariItemListItem item)
+        {
+            if (_avatarSettings?.ItemListGroupItems == null || item == null)
+            {
+                return null;
+            }
+
+            return _avatarSettings.ItemListGroupItems.FirstOrDefault(group =>
+                group?.itemListItems != null && group.itemListItems.Contains(item));
         }
 
         private static void ApplyScaleMultiplyToItem(AmariItemGroupListItem group, AmariItemListItem item, bool registerUndo = false, string undoName = null)
@@ -651,29 +719,21 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
 
             var previewButtons = root.Query<Button>("ItemPreviewStatusButton").ToList();
-            if (previewButtons.Count == 0)
-            {
-                return;
-            }
-
+            previewButtons.AddRange(root.Query<Button>("ItemPreviewStatusButton").ToList());
             foreach (var button in previewButtons)
             {
+                var isPreviewing = button.userData is ItemItemElementState state &&
+                                   IsItemPreviewing(state.group, state.item);
+                SetPreviewButtonState(button, isPreviewing);
+            }
+
+            var groupPreviewButtons = root.Query<Button>("ItemGroupPreviewButton").ToList();
+            foreach (var button in groupPreviewButtons)
+            {
                 var isPreviewing = false;
-                var parent = button.parent;
-                while (parent != null)
+                if (button.userData is ItemGroupElementState state && state.group != null)
                 {
-                    var prefabField = parent.Q<ObjectField>("ItemPrefabField");
-                    if (prefabField != null)
-                    {
-                        var prefab = prefabField.value as GameObject;
-                        if (prefab != null && _avatarSettings != null)
-                        {
-                            isPreviewing = _avatarSettings.activePreviewItem != null &&
-                                           _avatarSettings.activePreviewItem.prefab == prefab;
-                        }
-                        break;
-                    }
-                    parent = parent.parent;
+                    isPreviewing = state.group.previewEnabled;
                 }
 
                 SetPreviewButtonState(button, isPreviewing);
@@ -728,6 +788,10 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
 
             group.itemListItems ??= new List<AmariItemListItem>();
+            if (EnsureGroupActivePreviewItem(group))
+            {
+                MarkSettingsDirty();
+            }
 
             var listViewState = GetOrCreateItemListViewState(itemListView);
             if (listViewState.group != null && listViewState.group != group)
@@ -736,7 +800,6 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 _itemListSnapshots.Remove(itemListView);
             }
 
-            itemListView.itemsSource = group.itemListItems;
             itemListView.makeItem = () => itemItemAsset.Instantiate();
             itemListView.virtualizationMethod = CollectionVirtualizationMethod.DynamicHeight;
             _listViewToTargetList[itemListView] = group.itemListItems;
@@ -797,9 +860,10 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 var previewButton = element.Q<Button>("ItemPreviewStatusButton");
                 if (previewButton != null)
                 {
-                    SetPreviewButtonState(previewButton, _avatarSettings.activePreviewItem == item);
+                    SetPreviewButtonState(previewButton, IsItemPreviewing(currentGroup, item));
                     var previewState = GetOrCreateItemItemElementState(previewButton);
                     previewState.item = item;
+                    previewState.group = currentGroup;
                     previewState.listView = itemListView;
                     if (!previewState.bound)
                     {
@@ -811,16 +875,24 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                                 return;
                             }
 
+                            if (state.group == null)
+                            {
+                                return;
+                            }
+
                             if (state.item.instance == null)
                             {
                                 return;
                             }
 
                             RecordSettingsUndo("Change Active Preview Item");
-                            _avatarSettings.activePreviewItem = state.item;
+                            // グループプレビューがOFFでも、アイテム側操作で自動的にグループをONへ戻す
+                            state.group.previewEnabled = true;
+                            state.group.activePreviewItem = state.item;
                             UpdatePreviewInstanceActiveStates(true, "Change Active Preview Item");
                             MarkSettingsDirty();
                             state.listView?.RefreshItems();
+                            SetupLocalizationTextItem(rootVisualElement);
                         };
                     }
                 }
@@ -872,6 +944,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 }
             };
 
+            itemListView.itemsSource = group.itemListItems;
+
             if (!listViewState.bound)
             {
                 listViewState.bound = true;
@@ -889,6 +963,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                         snapshot = state.group.itemListItems.ToList();
                     }
 
+                    var previewChanged = false;
                     foreach (var i in indices)
                     {
                         if (i < 0 || i >= snapshot.Count)
@@ -897,16 +972,27 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                         }
 
                         var item = snapshot[i];
-                    if (item == null || !item.instance)
-                    {
-                        continue;
+                        if (item == null)
+                        {
+                            continue;
+                        }
+
+                        if (item.instance)
+                        {
+                            Undo.DestroyObjectImmediate(item.instance);
+                        }
+
+                        if (state.group.activePreviewItem == item)
+                        {
+                            state.group.activePreviewItem = null;
+                            previewChanged = true;
+                        }
                     }
 
-                        Undo.DestroyObjectImmediate(item.instance);
-                        if (_avatarSettings.activePreviewItem == item)
-                        {
-                            OnActivePreviewItemDestroy(item, true, "Remove Item Prefab");
-                        }
+                    previewChanged |= EnsureGroupActivePreviewItem(state.group);
+                    if (previewChanged)
+                    {
+                        UpdatePreviewInstanceActiveStates(true, "Remove Item Prefab");
                     }
 
                     UpdateItemCheckResultsForGroup(state.group);
