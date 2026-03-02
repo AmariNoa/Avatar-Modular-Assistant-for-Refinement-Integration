@@ -17,7 +17,18 @@
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>
-        <ui:VisualElement style="flex-grow: 1;" />
+        <ui:VisualElement style="flex-grow: 1; flex-direction: row;">
+            <ui:VisualElement style="flex-grow: 1; max-width: 110px; justify-content: space-around; align-self: stretch; padding-top: 5px; padding-bottom: 5px; min-width: 110px;">
+                <ui:VisualElement style="flex-grow: 1;" />
+                <ui:Label tabindex="-1" text="AvatarPreset" parse-escape-sequences="true" display-tooltip-when-elided="true" name="AvatarPresetTitle" />
+            </ui:VisualElement>
+            <ui:VisualElement style="flex-grow: 1; justify-content: space-around; align-self: stretch; padding-top: 5px; padding-bottom: 5px;">
+                <ui:VisualElement style="flex-grow: 1; padding-top: 5px; padding-right: 5px; padding-bottom: 5px; padding-left: 5px;">
+                    <ui:Button text="ReloadAvatarPreset" parse-escape-sequences="true" display-tooltip-when-elided="true" name="ReloadAvatarPresetButton" />
+                </ui:VisualElement>
+                <ui:Label tabindex="-1" parse-escape-sequences="true" display-tooltip-when-elided="true" name="AvatarPresetName" style="-unity-text-align: middle-left;" />
+            </ui:VisualElement>
+        </ui:VisualElement>
     </ui:VisualElement>
     <ui:VisualElement name="SubPanel" style="flex-grow: 1; max-height: 10%; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px; min-height: 60px;">
         <ui:DropdownField label="Outfit Tool" name="OutfitToolType" style="align-self: stretch; justify-content: space-around;" />
@@ -31,7 +42,9 @@
             <ui:VisualElement name="ItemListPanel" style="flex-grow: 1; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px; max-width: 50%;">
                 <ui:VisualElement style="flex-grow: 1; max-height: 90px; min-height: 90px;">
                     <ui:TextField picking-mode="Ignore" label="Item Group Name" name="ItemGroupNameField" />
-                    <ui:FloatField label="Scale Multiply" value="1" name="ScaleMultiply" />
+                    <ui:FloatField label="Scale Multiply" value="1" name="ScaleMultiply">
+                        <ui:Button text="Scale by Preset" parse-escape-sequences="true" display-tooltip-when-elided="true" name="ScaleByPreset" />
+                    </ui:FloatField>
                 </ui:VisualElement>
                 <ui:VisualElement style="flex-grow: 1; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px; max-height: 48px;">
                     <ui:Label tabindex="-1" text="Costume List" parse-escape-sequences="true" display-tooltip-when-elided="true" name="ItemPanelTitle" />
