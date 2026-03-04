@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -18,12 +19,26 @@ namespace com.amari_noa.avatar_modular_assistant.editor
     {
         private const string ItemGroupExportDefaultFileName = "ItemGroupExport";
 
+        private sealed class ImportedItemGroupData
+        {
+            public string groupName;
+            public float scaleMultiply = 1f;
+            public List<ImportedItemData> items = new();
+        }
+
+        private sealed class ImportedItemData
+        {
+            public string prefabGuid;
+            public bool includeInBuild;
+        }
+
         private AmariItemGroupListItem _activeItemGroupTab;
 
         private void BuildItemGroupTabPanel(VisualElement root)
         {
             var itemTabScrollView = root.Q<ScrollView>("ItemGroupTabListView");
             var itemTabItemAddButton = root.Q<Button>("NewItemTabGroupButton");
+            var itemGroupImportButton = root.Q<Button>("ItemGroupImport");
             var itemGroupExportButton = root.Q<Button>("ItemGroupExport");
 
             if (itemTabScrollView == null || itemTabItemAddButton == null || _avatarSettings == null)
@@ -39,9 +54,55 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 AddItemGroup(itemTabScrollView, root);
             };
 
+            if (itemGroupImportButton != null)
+            {
+                itemGroupImportButton.clicked += () => OnItemGroupImportButtonClicked(itemTabScrollView, root);
+            }
+
             if (itemGroupExportButton != null)
             {
                 itemGroupExportButton.clicked += OnItemGroupExportButtonClicked;
+            }
+        }
+
+        private void OnItemGroupImportButtonClicked(ScrollView tabScrollView, VisualElement root)
+        {
+            if (_avatarSettings?.ItemListGroupItems == null)
+            {
+                return;
+            }
+
+            var importPath = EditorUtility.OpenFilePanel(
+                "Import Item Group",
+                Application.dataPath,
+                "json");
+
+            if (string.IsNullOrWhiteSpace(importPath))
+            {
+                return;
+            }
+
+            if (!File.Exists(importPath))
+            {
+                Debug.LogError($"[AMARI] Item group import file not found: {importPath}");
+                return;
+            }
+
+            try
+            {
+                var json = File.ReadAllText(importPath, Encoding.UTF8);
+                if (!TryParseImportedItemGroupJson(json, out var imported, out var parseError))
+                {
+                    Debug.LogError($"[AMARI] Failed to import item group: {parseError}");
+                    return;
+                }
+
+                ImportItemGroup(imported, tabScrollView, root);
+                Debug.Log($"[AMARI] Item group imported: {importPath}");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[AMARI] Failed to import item group: {ex.Message}");
             }
         }
 
@@ -185,6 +246,263 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             var normalizedAssets = Path.GetFullPath(Application.dataPath).Replace('\\', '/').TrimEnd('/');
             return normalizedPath.StartsWith(normalizedAssets + "/", StringComparison.OrdinalIgnoreCase) ||
                    string.Equals(normalizedPath, normalizedAssets, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool TryParseImportedItemGroupJson(string json, out ImportedItemGroupData imported, out string error)
+        {
+            imported = null;
+            error = null;
+
+            JObject root;
+            try
+            {
+                root = JObject.Parse(json);
+            }
+            catch (JsonException ex)
+            {
+                error = $"json parse failed: {ex.Message}";
+                return false;
+            }
+
+            var groupName = root["ItemGroupName"]?.Value<string>()?.Trim();
+            if (string.IsNullOrWhiteSpace(groupName))
+            {
+                groupName = DefaultGroupName;
+            }
+
+            var scaleMultiply = 1f;
+            if (root.TryGetValue("ScaleMultiply", out var scaleToken) && !TryReadScaleMultiply(scaleToken, out scaleMultiply))
+            {
+                error = "\"ScaleMultiply\" must be a number";
+                return false;
+            }
+
+            if (root["Items"] is not JObject itemsObject)
+            {
+                error = "\"Items\" must be an object";
+                return false;
+            }
+
+            var importedItems = new List<ImportedItemData>();
+            foreach (var itemPair in itemsObject.Properties())
+            {
+                if (!TryResolveImportedPrefabGuid(itemPair.Name, itemPair.Value as JObject, out var prefabGuid))
+                {
+                    Debug.LogWarning($"[AMARI] Item group import skipped invalid prefab guid key: {itemPair.Name}");
+                    continue;
+                }
+
+                var includeInBuild = false;
+                if (itemPair.Value is JObject itemObject)
+                {
+                    includeInBuild = TryReadIncludeInBuild(itemObject);
+                }
+
+                importedItems.Add(new ImportedItemData
+                {
+                    prefabGuid = prefabGuid,
+                    includeInBuild = includeInBuild
+                });
+            }
+
+            imported = new ImportedItemGroupData
+            {
+                groupName = groupName,
+                scaleMultiply = scaleMultiply,
+                items = importedItems
+            };
+
+            return true;
+        }
+
+        private static bool TryReadScaleMultiply(JToken token, out float scaleMultiply)
+        {
+            switch (token?.Type)
+            {
+                case JTokenType.Integer:
+                case JTokenType.Float:
+                    scaleMultiply = token.Value<float>();
+                    return true;
+                case JTokenType.String when float.TryParse(token.Value<string>(), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed):
+                    scaleMultiply = parsed;
+                    return true;
+                case JTokenType.String when float.TryParse(token.Value<string>(), NumberStyles.Float, CultureInfo.CurrentCulture, out var parsedCurrentCulture):
+                    scaleMultiply = parsedCurrentCulture;
+                    return true;
+                default:
+                    scaleMultiply = 0f;
+                    return false;
+            }
+        }
+
+        private static bool TryReadIncludeInBuild(JObject itemObject)
+        {
+            var includeToken = itemObject["IncludeInBuild"];
+            if (includeToken == null)
+            {
+                return false;
+            }
+
+            switch (includeToken.Type)
+            {
+                case JTokenType.Boolean:
+                    return includeToken.Value<bool>();
+                case JTokenType.Integer:
+                    return includeToken.Value<int>() != 0;
+                case JTokenType.String when bool.TryParse(includeToken.Value<string>(), out var parsed):
+                    return parsed;
+                default:
+                    return false;
+            }
+        }
+
+        private static bool TryResolveImportedPrefabGuid(string rawKey, JObject itemObject, out string prefabGuid)
+        {
+            prefabGuid = null;
+            if (string.IsNullOrWhiteSpace(rawKey))
+            {
+                return false;
+            }
+
+            var candidate = rawKey.Trim();
+            if (candidate.StartsWith("__EMPTY_PREFAB_GUID_", StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (IsLikelyGuid(candidate))
+            {
+                prefabGuid = candidate;
+                return true;
+            }
+
+            var suffixSeparatorIndex = candidate.LastIndexOf('_');
+            if (suffixSeparatorIndex <= 0 || suffixSeparatorIndex >= candidate.Length - 1)
+            {
+                return TryResolvePrefabGuidFromValue(itemObject, out prefabGuid);
+            }
+
+            var suffix = candidate[(suffixSeparatorIndex + 1)..];
+            if (!int.TryParse(suffix, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
+            {
+                return TryResolvePrefabGuidFromValue(itemObject, out prefabGuid);
+            }
+
+            var originalGuidCandidate = candidate[..suffixSeparatorIndex];
+            if (!IsLikelyGuid(originalGuidCandidate))
+            {
+                return TryResolvePrefabGuidFromValue(itemObject, out prefabGuid);
+            }
+
+            prefabGuid = originalGuidCandidate;
+            return true;
+        }
+
+        private static bool TryResolvePrefabGuidFromValue(JObject itemObject, out string prefabGuid)
+        {
+            prefabGuid = null;
+            if (itemObject == null)
+            {
+                return false;
+            }
+
+            var candidate = itemObject["PrefabGuid"]?.Value<string>()?.Trim();
+            if (!IsLikelyGuid(candidate))
+            {
+                return false;
+            }
+
+            prefabGuid = candidate;
+            return true;
+        }
+
+        private static bool IsLikelyGuid(string candidate)
+        {
+            if (string.IsNullOrWhiteSpace(candidate) || candidate.Length != 32)
+            {
+                return false;
+            }
+
+            for (var i = 0; i < candidate.Length; i++)
+            {
+                var c = candidate[i];
+                var isHex = (c >= '0' && c <= '9') ||
+                            (c >= 'a' && c <= 'f') ||
+                            (c >= 'A' && c <= 'F');
+                if (!isHex)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private void ImportItemGroup(ImportedItemGroupData imported, ScrollView tabScrollView, VisualElement root)
+        {
+            if (imported == null || _avatarSettings?.ItemListGroupItems == null)
+            {
+                return;
+            }
+
+            RecordSettingsUndo("Import Item Group");
+
+            var desiredGroupName = string.IsNullOrWhiteSpace(imported.groupName) ? DefaultGroupName : imported.groupName.Trim();
+            var group = new AmariItemGroupListItem
+            {
+                groupName = GetUnusedItemGroupName(desiredGroupName),
+                itemListItems = new List<AmariItemListItem>(),
+                scaleMultiply = imported.scaleMultiply,
+                previewEnabled = true,
+                previewStateInitialized = true
+            };
+
+            _avatarSettings.ItemListGroupItems.Add(group);
+
+            foreach (var importedItem in imported.items.Where(item => item != null && !string.IsNullOrWhiteSpace(item.prefabGuid)))
+            {
+                var item = new AmariItemListItem();
+                GameObject prefab = null;
+                GameObject instance = null;
+                var prefabPath = AssetDatabase.GUIDToAssetPath(importedItem.prefabGuid);
+                if (!string.IsNullOrWhiteSpace(prefabPath))
+                {
+                    var loadedPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+                    if (IsPrefabAsset(loadedPrefab))
+                    {
+                        prefab = loadedPrefab;
+                        instance = UpdatePrefabInstanceInScene(item, prefab, true, "Import Item Prefab");
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[AMARI] Item group import prefab is not a prefab asset guid: {importedItem.prefabGuid}");
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning($"[AMARI] Item group import prefab guid not found in project: {importedItem.prefabGuid}");
+                }
+
+                SetItemListItemValues(item, prefab, importedItem.prefabGuid, instance);
+                if (instance != null)
+                {
+                    Undo.RecordObject(instance, "Toggle Include In Build");
+                    instance.tag = importedItem.includeInBuild ? "Untagged" : "EditorOnly";
+                    MarkObjectDirty(instance);
+                }
+
+                group.itemListItems.Add(item);
+                ApplyScaleMultiplyToItem(group, item, true, "Apply Item Scale");
+                CheckOrActivatePreviewItem(group, item);
+            }
+
+            EnsureGroupActivePreviewItem(group);
+            UpdatePreviewInstanceActiveStates(true, "Import Item Group");
+            UpdateItemCheckResultsForGroup(group);
+            MarkSettingsDirty();
+
+            _activeItemGroupTab = group;
+            RefreshItemGroupTabs(tabScrollView, root);
         }
 
         private static void SetupTabScrollView(ScrollView scrollView)
