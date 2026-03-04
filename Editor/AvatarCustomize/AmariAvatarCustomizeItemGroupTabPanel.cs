@@ -32,6 +32,74 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             public bool includeInBuild;
         }
 
+        private sealed class SharedBaseBodyScaleCandidate
+        {
+            public string avatarPrefabGuid;
+            public string displayName;
+            public float scaleMultiply;
+        }
+
+        private sealed class ScaleByPresetPopupContent : UnityEditor.PopupWindowContent
+        {
+            private readonly IReadOnlyList<SharedBaseBodyScaleCandidate> _candidates;
+            private readonly Action<float> _onSelected;
+            private Vector2 _scrollPosition;
+
+            public ScaleByPresetPopupContent(IReadOnlyList<SharedBaseBodyScaleCandidate> candidates, Action<float> onSelected)
+            {
+                _candidates = candidates ?? Array.Empty<SharedBaseBodyScaleCandidate>();
+                _onSelected = onSelected;
+            }
+
+            public override Vector2 GetWindowSize()
+            {
+                if (_candidates.Count == 0)
+                {
+                    return new Vector2(360f, 76f);
+                }
+
+                var visibleRows = Mathf.Clamp(_candidates.Count, 1, 10);
+                return new Vector2(360f, 16f + visibleRows * 24f);
+            }
+
+            public override void OnGUI(Rect rect)
+            {
+                GUILayout.Space(4f);
+
+                if (_candidates.Count == 0)
+                {
+                    EditorGUILayout.HelpBox(
+                        AmariLocalization.Get("amari.window.avatarCustomize.sharedBaseBodyCandidateEmpty"),
+                        MessageType.Info);
+                    return;
+                }
+
+                _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
+                foreach (var candidate in _candidates)
+                {
+                    if (candidate == null)
+                    {
+                        continue;
+                    }
+
+                    var name = string.IsNullOrWhiteSpace(candidate.displayName)
+                        ? candidate.avatarPrefabGuid
+                        : candidate.displayName;
+                    var buttonLabel = $"{name} ({candidate.scaleMultiply:0.###})";
+                    if (!GUILayout.Button(buttonLabel, GUILayout.Height(20f)))
+                    {
+                        continue;
+                    }
+
+                    _onSelected?.Invoke(candidate.scaleMultiply);
+                    editorWindow?.Close();
+                    GUIUtility.ExitGUI();
+                }
+
+                EditorGUILayout.EndScrollView();
+            }
+        }
+
         private AmariItemGroupListItem _activeItemGroupTab;
 
         private void BuildItemGroupTabPanel(VisualElement root)
@@ -104,6 +172,100 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             {
                 Debug.LogError($"[AMARI] Failed to import item group: {ex.Message}");
             }
+        }
+
+        private void ShowScaleByPresetPopup(Button anchorButton, FloatField scaleMultiplyField, AmariItemGroupListItem group)
+        {
+            if (anchorButton == null || scaleMultiplyField == null || group == null)
+            {
+                return;
+            }
+
+            var candidates = BuildSharedBaseBodyScaleCandidates();
+            UnityEditor.PopupWindow.Show(anchorButton.worldBound, new ScaleByPresetPopupContent(candidates, selectedScale =>
+            {
+                scaleMultiplyField.value = selectedScale;
+            }));
+        }
+
+        private List<SharedBaseBodyScaleCandidate> BuildSharedBaseBodyScaleCandidates()
+        {
+            var candidates = new List<SharedBaseBodyScaleCandidate>();
+            var addedPresetKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (_avatarDescriptor == null || _avatarDescriptor.gameObject == null)
+            {
+                return candidates;
+            }
+
+            if (!AmariAvatarPresetManager.TryGetPresetByAvatarPrefab(_avatarDescriptor.gameObject, out var currentPreset) ||
+                currentPreset == null)
+            {
+                return candidates;
+            }
+
+            var currentAvatarGuid = string.Empty;
+            if (AmariAvatarPresetManager.TryGetAvatarPrefabGuidByAvatarPrefab(_avatarDescriptor.gameObject, currentPreset, out var resolvedGuid))
+            {
+                currentAvatarGuid = resolvedGuid ?? string.Empty;
+            }
+
+            var languageCode = AmariLocalization.CurrentLanguageCode;
+            foreach (var (sharedAvatarGuid, scaleMultiply) in currentPreset.SharedBaseBody)
+            {
+                if (string.IsNullOrWhiteSpace(sharedAvatarGuid))
+                {
+                    continue;
+                }
+
+                if (string.Equals(sharedAvatarGuid, currentAvatarGuid, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                if (!AmariAvatarPresetManager.TryGetPresetByAvatarPrefabGuid(sharedAvatarGuid, out var targetPreset) ||
+                    targetPreset == null)
+                {
+                    continue;
+                }
+
+                if (ReferenceEquals(targetPreset, currentPreset))
+                {
+                    continue;
+                }
+
+                var presetKey = targetPreset.SourceAssetPath;
+                if (string.IsNullOrWhiteSpace(presetKey))
+                {
+                    presetKey = $"__GUID__:{sharedAvatarGuid}";
+                }
+
+                if (!addedPresetKeys.Add(presetKey))
+                {
+                    continue;
+                }
+
+                var displayName = targetPreset.GetAvatarName(languageCode);
+                if (string.IsNullOrWhiteSpace(displayName))
+                {
+                    displayName = targetPreset.GetAvatarName();
+                }
+
+                candidates.Add(new SharedBaseBodyScaleCandidate
+                {
+                    avatarPrefabGuid = sharedAvatarGuid,
+                    displayName = displayName,
+                    scaleMultiply = scaleMultiply
+                });
+            }
+
+            candidates.Sort((left, right) =>
+            {
+                var leftName = left?.displayName ?? string.Empty;
+                var rightName = right?.displayName ?? string.Empty;
+                return string.Compare(leftName, rightName, StringComparison.OrdinalIgnoreCase);
+            });
+
+            return candidates;
         }
 
         private void OnItemGroupExportButtonClicked()
@@ -869,6 +1031,27 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                         ApplyScaleMultiplyToGroup(state.group, true, "Apply Item Scale");
                         MarkSettingsDirty();
                     });
+                }
+            }
+
+            var scaleByPresetButton = root.Q<Button>("ScaleByPreset");
+            if (scaleByPresetButton != null)
+            {
+                var scaleButtonState = GetOrCreateItemGroupElementState(scaleByPresetButton);
+                scaleButtonState.group = group;
+                if (!scaleButtonState.bound)
+                {
+                    scaleButtonState.bound = true;
+                    scaleByPresetButton.clicked += () =>
+                    {
+                        if (scaleByPresetButton.userData is not ItemGroupElementState state || state.group == null)
+                        {
+                            return;
+                        }
+
+                        var field = root.Q<FloatField>("ScaleMultiply");
+                        ShowScaleByPresetPopup(scaleByPresetButton, field, state.group);
+                    };
                 }
             }
 

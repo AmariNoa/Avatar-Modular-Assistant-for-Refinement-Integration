@@ -9,7 +9,8 @@
         "itemGroupNameLabel": "アイテムグループ名",
         "scaleMultiplyLabel": "スケール倍率",
         "previewButtonPreview": "プレビュー",
-        "previewButtonPreviewing": "プレビュー中"
+        "previewButtonPreviewing": "プレビュー中",
+        "sharedBaseBodyCandidateEmpty": "共通素体の候補がありません"
       }
     }
   }
