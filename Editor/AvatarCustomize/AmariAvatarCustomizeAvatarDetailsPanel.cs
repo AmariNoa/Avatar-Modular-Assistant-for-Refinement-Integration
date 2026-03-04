@@ -50,12 +50,68 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             avatarName.text = avatar.Name;
         }
 
+        private void OnReloadAvatarPresetButtonClicked()
+        {
+            AmariAvatarPresetManager.ReloadPresets();
+            UpdateAvatarPresetNameLabel(rootVisualElement);
+        }
+
+        private string ResolveCurrentAvatarPresetName()
+        {
+            if (_avatarDescriptor == null || _avatarDescriptor.gameObject == null)
+            {
+                return string.Empty;
+            }
+
+            if (!AmariAvatarPresetManager.TryGetPresetByAvatarPrefab(_avatarDescriptor.gameObject, out var preset) || preset == null)
+            {
+                return string.Empty;
+            }
+
+            return preset.GetAvatarName(AmariLocalization.CurrentLanguageCode);
+        }
+
+        private void UpdateAvatarPresetNameLabel(VisualElement root)
+        {
+            if (root == null)
+            {
+                return;
+            }
+
+            var avatarPresetNameLabel = root.Q<Label>("AvatarPresetName");
+            if (avatarPresetNameLabel == null)
+            {
+                return;
+            }
+
+            avatarPresetNameLabel.text = ResolveCurrentAvatarPresetName() ?? string.Empty;
+        }
+
+        private void BindAvatarPresetControls(VisualElement root)
+        {
+            if (root == null)
+            {
+                return;
+            }
+
+            var reloadAvatarPresetButton = root.Q<Button>("ReloadAvatarPresetButton");
+            if (reloadAvatarPresetButton != null)
+            {
+                reloadAvatarPresetButton.clicked -= OnReloadAvatarPresetButtonClicked;
+                reloadAvatarPresetButton.clicked += OnReloadAvatarPresetButtonClicked;
+            }
+
+            UpdateAvatarPresetNameLabel(root);
+        }
+
         private void BuildAvatarDetailsPanel(VisualElement root)
         {
             var avatarThumbnail = root.Q<VisualElement>("AvatarThumbnail");
             var avatarName = root.Q<Label>("AvatarName");
             var blueprintIdLabel = root.Q<Label>("BlueprintId");
             string blueprintId = null;
+
+            BindAvatarPresetControls(root);
 
             if (_avatarDescriptor != null &&
                 _avatarDescriptor.TryGetComponent<PipelineManager>(out var pipelineManager))

@@ -1,5 +1,10 @@
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using UnityEditor;
 using com.amari_noa.avatar_modular_assistant.runtime;
 using com.amari_noa.avatar_modular_assistant.editor.integrations.modular_avatar;
@@ -11,12 +16,15 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 {
     public partial class AmariAvatarCustomizeWindow
     {
+        private const string ItemGroupExportDefaultFileName = "ItemGroupExport";
+
         private AmariItemGroupListItem _activeItemGroupTab;
 
         private void BuildItemGroupTabPanel(VisualElement root)
         {
             var itemTabScrollView = root.Q<ScrollView>("ItemGroupTabListView");
             var itemTabItemAddButton = root.Q<Button>("NewItemTabGroupButton");
+            var itemGroupExportButton = root.Q<Button>("ItemGroupExport");
 
             if (itemTabScrollView == null || itemTabItemAddButton == null || _avatarSettings == null)
             {
@@ -30,6 +38,153 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             {
                 AddItemGroup(itemTabScrollView, root);
             };
+
+            if (itemGroupExportButton != null)
+            {
+                itemGroupExportButton.clicked += OnItemGroupExportButtonClicked;
+            }
+        }
+
+        private void OnItemGroupExportButtonClicked()
+        {
+            if (_activeItemGroupTab == null)
+            {
+                EditorUtility.DisplayDialog("Item Group Export", "No active item group found.", "OK");
+                return;
+            }
+
+            var fileName = BuildItemGroupExportFileName(_activeItemGroupTab.groupName);
+            var savePath = EditorUtility.SaveFilePanel(
+                "Export Item Group",
+                Application.dataPath,
+                fileName,
+                "json");
+
+            if (string.IsNullOrWhiteSpace(savePath))
+            {
+                return;
+            }
+
+            if (!savePath.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+            {
+                savePath += ".json";
+            }
+
+            try
+            {
+                var exportRoot = BuildItemGroupExportJson(_activeItemGroupTab);
+                var exportText = exportRoot.ToString(Formatting.Indented);
+                File.WriteAllText(savePath, exportText, new UTF8Encoding(false));
+
+                if (IsPathUnderAssetsDirectory(savePath))
+                {
+                    AssetDatabase.Refresh();
+                }
+
+                Debug.Log($"[AMARI] Item group exported: {savePath}");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[AMARI] Failed to export item group: {ex.Message}");
+            }
+        }
+
+        private JObject BuildItemGroupExportJson(AmariItemGroupListItem group)
+        {
+            var itemsObject = new JObject();
+            var usedItemKeys = new HashSet<string>(StringComparer.Ordinal);
+            var items = group?.itemListItems;
+
+            if (items != null)
+            {
+                for (var i = 0; i < items.Count; i++)
+                {
+                    var item = items[i];
+                    if (item == null)
+                    {
+                        continue;
+                    }
+
+                    var itemKey = BuildExportItemKey(item.prefabGuid, i, usedItemKeys);
+                    var includeInBuild = item.instance != null && !item.instance.CompareTag("EditorOnly");
+
+                    itemsObject[itemKey] = new JObject
+                    {
+                        ["IncludeInBuild"] = includeInBuild,
+                        /*
+                        ["MaterialOverrides"] = new JObject
+                        {
+                            // TODO マテリアルの上書き機能を実装したらここに出力
+                        }
+                        */
+                    };
+                }
+            }
+
+            return new JObject
+            {
+                ["ItemGroupName"] = group?.groupName ?? string.Empty,
+                ["AvatarPrefabGuid"] = ResolveAvatarPrefabGuidForExport(),
+                ["ScaleMultiply"] = group?.scaleMultiply ?? 1f,
+                ["Items"] = itemsObject
+            };
+        }
+
+        private string ResolveAvatarPrefabGuidForExport()
+        {
+            if (_avatarDescriptor == null || _avatarDescriptor.gameObject == null)
+            {
+                return string.Empty;
+            }
+
+            if (!AmariAvatarPresetManager.TryGetPresetByAvatarPrefab(_avatarDescriptor.gameObject, out var preset) || preset == null)
+            {
+                return string.Empty;
+            }
+
+            return AmariAvatarPresetManager.TryGetAvatarPrefabGuidByAvatarPrefab(_avatarDescriptor.gameObject, preset, out var avatarPrefabGuid)
+                ? avatarPrefabGuid ?? string.Empty
+                : string.Empty;
+        }
+
+        private static string BuildItemGroupExportFileName(string groupName)
+        {
+            var fileName = string.IsNullOrWhiteSpace(groupName) ? ItemGroupExportDefaultFileName : groupName.Trim();
+            foreach (var invalidChar in Path.GetInvalidFileNameChars())
+            {
+                fileName = fileName.Replace(invalidChar, '_');
+            }
+
+            return string.IsNullOrWhiteSpace(fileName) ? ItemGroupExportDefaultFileName : fileName;
+        }
+
+        private static string BuildExportItemKey(string prefabGuid, int index, ISet<string> usedKeys)
+        {
+            var baseKey = string.IsNullOrWhiteSpace(prefabGuid) ? $"__EMPTY_PREFAB_GUID_{index}" : prefabGuid.Trim();
+            if (usedKeys.Add(baseKey))
+            {
+                return baseKey;
+            }
+
+            var suffix = 1;
+            while (true)
+            {
+                var candidateKey = $"{baseKey}_{suffix}";
+                if (usedKeys.Add(candidateKey))
+                {
+                    return candidateKey;
+                }
+
+                suffix++;
+            }
+        }
+
+        private static bool IsPathUnderAssetsDirectory(string path)
+        {
+            var normalizedPath = Path.GetFullPath(path).Replace('\\', '/');
+            var normalizedAssets = Path.GetFullPath(Application.dataPath).Replace('\\', '/').TrimEnd('/');
+            return normalizedPath.StartsWith(normalizedAssets + "/", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(normalizedPath, normalizedAssets, StringComparison.OrdinalIgnoreCase);
         }
 
         private static void SetupTabScrollView(ScrollView scrollView)

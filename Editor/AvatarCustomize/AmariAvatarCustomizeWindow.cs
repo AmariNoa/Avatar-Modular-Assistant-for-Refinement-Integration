@@ -5,7 +5,6 @@ using UnityEngine;
 using com.amari_noa.avatar_modular_assistant.runtime;
 using com.amari_noa.avatar_modular_assistant.editor.integrations.modular_avatar;
 using UnityEngine.UIElements;
-using Object = UnityEngine.Object;
 using VRC.SDK3.Avatars.Components;
 
 // ReSharper disable once CheckNamespace

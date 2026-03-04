@@ -38,6 +38,10 @@
             <ui:ScrollView name="ItemGroupTabListView" horizontal-scrolling="true" vertical-scrolling="false" horizontal-scroller-visibility="AlwaysVisible" vertical-scroller-visibility="Hidden" style="flex-direction: row; max-height: 40px; min-height: 40px; align-self: stretch; max-width: none; width: 90%; justify-content: space-around;" />
             <ui:Button text="+" parse-escape-sequences="true" display-tooltip-when-elided="true" name="NewItemTabGroupButton" style="width: 40px; height: 40px; -unity-text-align: middle-center; align-self: stretch;" />
         </ui:VisualElement>
+        <ui:VisualElement style="flex-grow: 1; max-height: 30px; min-height: 30px; flex-direction: row; justify-content: space-around; align-self: stretch; align-items: stretch;">
+            <ui:Button text="Import Item Group" parse-escape-sequences="true" display-tooltip-when-elided="true" name="ItemGroupImport" style="align-self: stretch; justify-content: space-around; flex-grow: 1; max-width: 50%;" />
+            <ui:Button text="Export Item Group" parse-escape-sequences="true" display-tooltip-when-elided="true" name="ItemGroupExport" style="align-self: stretch; justify-content: space-around; flex-grow: 1; max-width: 50%;" />
+        </ui:VisualElement>
         <ui:VisualElement name="MainInnerPanel" style="flex-grow: 1; flex-direction: row; max-width: none; max-height: none;">
             <ui:VisualElement name="ItemListPanel" style="flex-grow: 1; padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px; max-width: 50%;">
                 <ui:VisualElement style="flex-grow: 1; max-height: 90px; min-height: 90px;">

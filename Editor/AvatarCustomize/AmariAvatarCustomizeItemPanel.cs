@@ -689,6 +689,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             return groupName;
         }
 
+        // TODO 色々なパネルのラベル更新処理が混ざってるので移動を検討したい
         private void SetupLocalizationTextItem(VisualElement root)
         {
             var itemPanelTitle = root.Q<Label>("ItemPanelTitle");
@@ -738,6 +739,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
                 SetPreviewButtonState(button, isPreviewing);
             }
+
+            UpdateAvatarPresetNameLabel(root);
         }
 
         private void ClearItemGroupPanel(TextField nameField, FloatField scaleField, ListView listView)

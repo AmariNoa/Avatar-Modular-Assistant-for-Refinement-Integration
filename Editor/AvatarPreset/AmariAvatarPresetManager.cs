@@ -12,7 +12,7 @@ using UnityEngine;
 namespace com.amari_noa.avatar_modular_assistant.editor
 {
     [InitializeOnLoad]
-    public static class AvatarPresetManager
+    public static class AmariAvatarPresetManager
     {
         private const string PresetParentDirPath = "Assets/_AMARI_DATA/Avatars";
         private const string DefaultLanguageCode = "en-US";
@@ -23,7 +23,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
         public static event Action PresetsReloaded;
 
-        static AvatarPresetManager()
+        static AmariAvatarPresetManager()
         {
             ReloadPresets();
         }
@@ -137,6 +137,40 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     var prefabGuid = AssetDatabase.AssetPathToGUID(assetPath);
                     if (TryGetPresetByAvatarPrefabGuid(prefabGuid, out preset))
                     {
+                        return true;
+                    }
+                }
+
+                var parentPrefab = PrefabUtility.GetCorrespondingObjectFromSource(currentPrefab);
+                if (parentPrefab == null || ReferenceEquals(parentPrefab, currentPrefab))
+                {
+                    break;
+                }
+
+                currentPrefab = parentPrefab;
+            }
+
+            return false;
+        }
+
+        public static bool TryGetAvatarPrefabGuidByAvatarPrefab(GameObject avatarPrefab, AvatarPreset preset, out string avatarPrefabGuid)
+        {
+            avatarPrefabGuid = null;
+            if (avatarPrefab == null || preset == null)
+            {
+                return false;
+            }
+
+            var currentPrefab = avatarPrefab;
+            while (currentPrefab != null)
+            {
+                var assetPath = AssetDatabase.GetAssetPath(currentPrefab);
+                if (!string.IsNullOrWhiteSpace(assetPath))
+                {
+                    var candidateGuid = AssetDatabase.AssetPathToGUID(assetPath);
+                    if (!string.IsNullOrWhiteSpace(candidateGuid) && preset.ContainsAvatarPrefabGuid(candidateGuid))
+                    {
+                        avatarPrefabGuid = candidateGuid;
                         return true;
                     }
                 }

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using com.amari_noa.avatar_modular_assistant.editor.integrations;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 // ReSharper disable once CheckNamespace
 namespace com.amari_noa.avatar_modular_assistant.runtime
@@ -13,7 +12,6 @@ namespace com.amari_noa.avatar_modular_assistant.runtime
         public string groupName;
         public List<AmariItemListItem> itemListItems;
         public float scaleMultiply = 1f;
-        public bool includeInBuild = false;
 
         // グループ単位のプレビュー設定
         public bool previewEnabled = true;
