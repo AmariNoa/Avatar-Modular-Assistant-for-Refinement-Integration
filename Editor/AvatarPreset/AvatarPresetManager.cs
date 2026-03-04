@@ -120,7 +120,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             return TryGetPresetByAvatarPrefabGuid(avatarPrefabGuid, out var preset) ? preset : null;
         }
 
-        public static bool TryGetPresetByAvatarPrefab(UnityEngine.Object avatarPrefab, out AvatarPreset preset)
+        public static bool TryGetPresetByAvatarPrefab(GameObject avatarPrefab, out AvatarPreset preset)
         {
             preset = null;
             if (avatarPrefab == null)
@@ -128,14 +128,29 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 return false;
             }
 
-            var assetPath = AssetDatabase.GetAssetPath(avatarPrefab);
-            if (string.IsNullOrWhiteSpace(assetPath))
+            var currentPrefab = avatarPrefab;
+            while (currentPrefab != null)
             {
-                return false;
+                var assetPath = AssetDatabase.GetAssetPath(currentPrefab);
+                if (!string.IsNullOrWhiteSpace(assetPath))
+                {
+                    var prefabGuid = AssetDatabase.AssetPathToGUID(assetPath);
+                    if (TryGetPresetByAvatarPrefabGuid(prefabGuid, out preset))
+                    {
+                        return true;
+                    }
+                }
+
+                var parentPrefab = PrefabUtility.GetCorrespondingObjectFromSource(currentPrefab);
+                if (parentPrefab == null || ReferenceEquals(parentPrefab, currentPrefab))
+                {
+                    break;
+                }
+
+                currentPrefab = parentPrefab;
             }
 
-            var prefabGuid = AssetDatabase.AssetPathToGUID(assetPath);
-            return TryGetPresetByAvatarPrefabGuid(prefabGuid, out preset);
+            return false;
         }
 
         private static IEnumerable<string> EnumeratePresetJsonFiles()
