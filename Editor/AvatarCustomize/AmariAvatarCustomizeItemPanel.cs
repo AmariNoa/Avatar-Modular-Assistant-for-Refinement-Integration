@@ -117,6 +117,52 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                    item.instance != null;
         }
 
+        private static bool TryResolveGroupItemReference(AmariItemGroupListItem group, AmariItemListItem sourceItem, out AmariItemListItem resolvedItem)
+        {
+            resolvedItem = null;
+            if (group?.itemListItems == null || sourceItem == null)
+            {
+                return false;
+            }
+
+            if (group.itemListItems.Contains(sourceItem))
+            {
+                resolvedItem = sourceItem;
+                return true;
+            }
+
+            if (sourceItem.instance != null)
+            {
+                resolvedItem = group.itemListItems.FirstOrDefault(candidate => candidate != null && candidate.instance == sourceItem.instance);
+                if (resolvedItem != null)
+                {
+                    return true;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(sourceItem.prefabGuid))
+            {
+                resolvedItem = group.itemListItems.FirstOrDefault(candidate =>
+                    candidate != null &&
+                    string.Equals(candidate.prefabGuid, sourceItem.prefabGuid, System.StringComparison.Ordinal));
+                if (resolvedItem != null)
+                {
+                    return true;
+                }
+            }
+
+            if (sourceItem.prefab != null)
+            {
+                resolvedItem = group.itemListItems.FirstOrDefault(candidate => candidate != null && candidate.prefab == sourceItem.prefab);
+                if (resolvedItem != null)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private static AmariItemListItem FindGroupPreviewCandidate(AmariItemGroupListItem group, AmariItemListItem preferredItem = null)
         {
             if (group?.itemListItems == null)
@@ -124,9 +170,10 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 return null;
             }
 
-            if (IsGroupActivePreviewItem(group, preferredItem))
+            if (TryResolveGroupItemReference(group, preferredItem, out var resolvedPreferredItem) &&
+                IsGroupActivePreviewItem(group, resolvedPreferredItem))
             {
-                return preferredItem;
+                return resolvedPreferredItem;
             }
 
             return group.itemListItems.FirstOrDefault(candidate => candidate?.instance != null);
@@ -155,6 +202,14 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             group.itemListItems ??= new List<AmariItemListItem>();
 
             var active = group.activePreviewItem;
+            if (TryResolveGroupItemReference(group, active, out var resolvedActive) &&
+                !ReferenceEquals(group.activePreviewItem, resolvedActive))
+            {
+                group.activePreviewItem = resolvedActive;
+                changed = true;
+            }
+
+            active = group.activePreviewItem;
             if (IsGroupActivePreviewItem(group, active))
             {
                 return changed;
