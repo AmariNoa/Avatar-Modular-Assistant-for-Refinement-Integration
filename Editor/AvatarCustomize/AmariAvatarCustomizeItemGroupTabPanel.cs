@@ -22,6 +22,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
         private sealed class ImportedItemGroupData
         {
             public string groupName;
+            public string avatarPrefabGuid;
             public float scaleMultiply = 1f;
             public List<ImportedItemData> items = new();
         }
@@ -432,6 +433,12 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 groupName = DefaultGroupName;
             }
 
+            var avatarPrefabGuid = root["AvatarPrefabGuid"]?.Value<string>()?.Trim();
+            if (!IsLikelyGuid(avatarPrefabGuid))
+            {
+                avatarPrefabGuid = string.Empty;
+            }
+
             var scaleMultiply = 1f;
             if (root.TryGetValue("ScaleMultiply", out var scaleToken) && !TryReadScaleMultiply(scaleToken, out scaleMultiply))
             {
@@ -470,11 +477,43 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             imported = new ImportedItemGroupData
             {
                 groupName = groupName,
+                avatarPrefabGuid = avatarPrefabGuid,
                 scaleMultiply = scaleMultiply,
                 items = importedItems
             };
 
             return true;
+        }
+
+        private bool TryResolveSharedBaseBodyScaleMultiply(string importedAvatarPrefabGuid, out float scaleMultiply)
+        {
+            scaleMultiply = 1f;
+            if (string.IsNullOrWhiteSpace(importedAvatarPrefabGuid) || _avatarDescriptor?.gameObject == null)
+            {
+                return false;
+            }
+
+            if (!AmariAvatarPresetManager.TryGetPresetByAvatarPrefab(_avatarDescriptor.gameObject, out var currentPreset) ||
+                currentPreset == null)
+            {
+                return false;
+            }
+
+            var normalizedImportedGuid = importedAvatarPrefabGuid.Trim();
+
+            var currentAvatarGuid = string.Empty;
+            if (AmariAvatarPresetManager.TryGetAvatarPrefabGuidByAvatarPrefab(_avatarDescriptor.gameObject, currentPreset, out var resolvedGuid))
+            {
+                currentAvatarGuid = resolvedGuid ?? string.Empty;
+            }
+
+            // 同一アバター由来のJSONは共通素体補正の対象外（書き出し値をそのまま利用する）
+            if (string.Equals(normalizedImportedGuid, currentAvatarGuid, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            return currentPreset.SharedBaseBody.TryGetValue(normalizedImportedGuid, out scaleMultiply);
         }
 
         private static bool TryReadScaleMultiply(JToken token, out float scaleMultiply)
@@ -618,6 +657,11 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 previewEnabled = true,
                 previewStateInitialized = true
             };
+
+            if (TryResolveSharedBaseBodyScaleMultiply(imported.avatarPrefabGuid, out var sharedBaseBodyScale))
+            {
+                group.scaleMultiply = sharedBaseBodyScale;
+            }
 
             _avatarSettings.ItemListGroupItems.Add(group);
 
