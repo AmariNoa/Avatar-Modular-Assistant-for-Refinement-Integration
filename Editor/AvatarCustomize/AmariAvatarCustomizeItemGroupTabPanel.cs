@@ -17,6 +17,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
     public partial class AmariAvatarCustomizeWindow
     {
         private const string ItemGroupExportDefaultFileName = "ItemGroupExport";
+        private const string ItemGroupFileExtension = "amri";
+        private const string ItemGroupFileExtensionWithDot = "." + ItemGroupFileExtension;
 
         private sealed class ImportedItemGroupData
         {
@@ -157,7 +159,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             var importPath = EditorUtility.OpenFilePanel(
                 "Import Item Group",
                 Application.dataPath,
-                "json");
+                ItemGroupFileExtension);
 
             if (string.IsNullOrWhiteSpace(importPath))
             {
@@ -295,16 +297,16 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 "Export Item Group",
                 Application.dataPath,
                 fileName,
-                "json");
+                ItemGroupFileExtension);
 
             if (string.IsNullOrWhiteSpace(savePath))
             {
                 return;
             }
 
-            if (!savePath.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+            if (!savePath.EndsWith(ItemGroupFileExtensionWithDot, StringComparison.OrdinalIgnoreCase))
             {
-                savePath += ".json";
+                savePath += ItemGroupFileExtensionWithDot;
             }
 
             try
