@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using UnityEditor;
 using com.amari_noa.avatar_modular_assistant.runtime;
 using com.amari_noa.avatar_modular_assistant.editor.integrations.modular_avatar;
@@ -31,6 +30,20 @@ namespace com.amari_noa.avatar_modular_assistant.editor
         {
             public string prefabGuid;
             public bool includeInBuild;
+        }
+
+        private sealed class ItemGroupJsonData
+        {
+            [JsonProperty("ItemGroupName")] public string itemGroupName;
+            [JsonProperty("AvatarPrefabGuid")] public string avatarPrefabGuid;
+            [JsonProperty("ScaleMultiply")] public float scaleMultiply = 1f;
+            [JsonProperty("Items")] public Dictionary<string, ItemGroupJsonItemData> items;
+        }
+
+        private sealed class ItemGroupJsonItemData
+        {
+            [JsonProperty("PrefabGuid")] public string prefabGuid;
+            [JsonProperty("IncludeInBuild")] public bool includeInBuild;
         }
 
         private sealed class SharedBaseBodyScaleCandidate
@@ -296,8 +309,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             try
             {
-                var exportRoot = BuildItemGroupExportJson(_activeItemGroupTab);
-                var exportText = exportRoot.ToString(Formatting.Indented);
+                var exportRoot = BuildItemGroupExportData(_activeItemGroupTab);
+                var exportText = JsonConvert.SerializeObject(exportRoot, Formatting.Indented);
                 File.WriteAllText(savePath, exportText, new UTF8Encoding(false));
 
                 if (IsPathUnderAssetsDirectory(savePath))
@@ -313,9 +326,9 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
         }
 
-        private JObject BuildItemGroupExportJson(AmariItemGroupListItem group)
+        private ItemGroupJsonData BuildItemGroupExportData(AmariItemGroupListItem group)
         {
-            var itemsObject = new JObject();
+            var itemsObject = new Dictionary<string, ItemGroupJsonItemData>(StringComparer.Ordinal);
             var usedItemKeys = new HashSet<string>(StringComparer.Ordinal);
             var items = group?.itemListItems;
 
@@ -332,25 +345,20 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     var itemKey = BuildExportItemKey(item.prefabGuid, i, usedItemKeys);
                     var includeInBuild = item.instance != null && !item.instance.CompareTag("EditorOnly");
 
-                    itemsObject[itemKey] = new JObject
+                    itemsObject[itemKey] = new ItemGroupJsonItemData
                     {
-                        ["IncludeInBuild"] = includeInBuild,
-                        /*
-                        ["MaterialOverrides"] = new JObject
-                        {
-                            // TODO マテリアルの上書き機能を実装したらここに出力
-                        }
-                        */
+                        prefabGuid = item.prefabGuid,
+                        includeInBuild = includeInBuild
                     };
                 }
             }
 
-            return new JObject
+            return new ItemGroupJsonData
             {
-                ["ItemGroupName"] = group?.groupName ?? string.Empty,
-                ["AvatarPrefabGuid"] = ResolveAvatarPrefabGuidForExport(),
-                ["ScaleMultiply"] = group?.scaleMultiply ?? 1f,
-                ["Items"] = itemsObject
+                itemGroupName = group?.groupName ?? string.Empty,
+                avatarPrefabGuid = ResolveAvatarPrefabGuidForExport(),
+                scaleMultiply = group?.scaleMultiply ?? 1f,
+                items = itemsObject
             };
         }
 
@@ -416,10 +424,10 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             imported = null;
             error = null;
 
-            JObject root;
+            ItemGroupJsonData root;
             try
             {
-                root = JObject.Parse(json);
+                root = JsonConvert.DeserializeObject<ItemGroupJsonData>(json);
             }
             catch (JsonException ex)
             {
@@ -427,50 +435,50 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 return false;
             }
 
-            var groupName = root["ItemGroupName"]?.Value<string>()?.Trim();
+            if (root == null)
+            {
+                error = "json parse failed: root object is null";
+                return false;
+            }
+
+            var groupName = root.itemGroupName?.Trim();
             if (string.IsNullOrWhiteSpace(groupName))
             {
                 groupName = DefaultGroupName;
             }
 
-            var avatarPrefabGuid = root["AvatarPrefabGuid"]?.Value<string>()?.Trim();
+            var avatarPrefabGuid = root.avatarPrefabGuid?.Trim();
             if (!IsLikelyGuid(avatarPrefabGuid))
             {
                 avatarPrefabGuid = string.Empty;
             }
 
-            var scaleMultiply = 1f;
-            if (root.TryGetValue("ScaleMultiply", out var scaleToken) && !TryReadScaleMultiply(scaleToken, out scaleMultiply))
+            var scaleMultiply = root.scaleMultiply;
+            if (float.IsNaN(scaleMultiply) || float.IsInfinity(scaleMultiply))
             {
                 error = "\"ScaleMultiply\" must be a number";
                 return false;
             }
 
-            if (root["Items"] is not JObject itemsObject)
+            if (root.items == null)
             {
                 error = "\"Items\" must be an object";
                 return false;
             }
 
             var importedItems = new List<ImportedItemData>();
-            foreach (var itemPair in itemsObject.Properties())
+            foreach (var itemPair in root.items)
             {
-                if (!TryResolveImportedPrefabGuid(itemPair.Name, itemPair.Value as JObject, out var prefabGuid))
+                if (!TryResolveImportedPrefabGuid(itemPair.Key, itemPair.Value, out var prefabGuid))
                 {
-                    Debug.LogWarning($"[AMARI] Item group import skipped invalid prefab guid key: {itemPair.Name}");
+                    Debug.LogWarning($"[AMARI] Item group import skipped invalid prefab guid key: {itemPair.Key}");
                     continue;
-                }
-
-                var includeInBuild = false;
-                if (itemPair.Value is JObject itemObject)
-                {
-                    includeInBuild = TryReadIncludeInBuild(itemObject);
                 }
 
                 importedItems.Add(new ImportedItemData
                 {
                     prefabGuid = prefabGuid,
-                    includeInBuild = includeInBuild
+                    includeInBuild = itemPair.Value?.includeInBuild ?? false
                 });
             }
 
@@ -516,48 +524,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             return currentPreset.SharedBaseBody.TryGetValue(normalizedImportedGuid, out scaleMultiply);
         }
 
-        private static bool TryReadScaleMultiply(JToken token, out float scaleMultiply)
-        {
-            switch (token?.Type)
-            {
-                case JTokenType.Integer:
-                case JTokenType.Float:
-                    scaleMultiply = token.Value<float>();
-                    return true;
-                case JTokenType.String when float.TryParse(token.Value<string>(), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed):
-                    scaleMultiply = parsed;
-                    return true;
-                case JTokenType.String when float.TryParse(token.Value<string>(), NumberStyles.Float, CultureInfo.CurrentCulture, out var parsedCurrentCulture):
-                    scaleMultiply = parsedCurrentCulture;
-                    return true;
-                default:
-                    scaleMultiply = 0f;
-                    return false;
-            }
-        }
-
-        private static bool TryReadIncludeInBuild(JObject itemObject)
-        {
-            var includeToken = itemObject["IncludeInBuild"];
-            if (includeToken == null)
-            {
-                return false;
-            }
-
-            switch (includeToken.Type)
-            {
-                case JTokenType.Boolean:
-                    return includeToken.Value<bool>();
-                case JTokenType.Integer:
-                    return includeToken.Value<int>() != 0;
-                case JTokenType.String when bool.TryParse(includeToken.Value<string>(), out var parsed):
-                    return parsed;
-                default:
-                    return false;
-            }
-        }
-
-        private static bool TryResolveImportedPrefabGuid(string rawKey, JObject itemObject, out string prefabGuid)
+        private static bool TryResolveImportedPrefabGuid(string rawKey, ItemGroupJsonItemData itemObject, out string prefabGuid)
         {
             prefabGuid = null;
             if (string.IsNullOrWhiteSpace(rawKey))
@@ -599,15 +566,10 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             return true;
         }
 
-        private static bool TryResolvePrefabGuidFromValue(JObject itemObject, out string prefabGuid)
+        private static bool TryResolvePrefabGuidFromValue(ItemGroupJsonItemData itemObject, out string prefabGuid)
         {
             prefabGuid = null;
-            if (itemObject == null)
-            {
-                return false;
-            }
-
-            var candidate = itemObject["PrefabGuid"]?.Value<string>()?.Trim();
+            var candidate = itemObject?.prefabGuid?.Trim();
             if (!IsLikelyGuid(candidate))
             {
                 return false;
