@@ -402,6 +402,158 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             _groupToListView[group] = listView;
         }
 
+        private void SyncItemListSnapshot(ListView listView, AmariItemGroupListItem group = null)
+        {
+            if (listView == null)
+            {
+                return;
+            }
+
+            if (group == null && listView.userData is ItemListViewState state)
+            {
+                group = state.group;
+            }
+
+            if (group?.itemListItems == null)
+            {
+                _itemListSnapshots.Remove(listView);
+                return;
+            }
+
+            _itemListSnapshots[listView] = group.itemListItems.ToList();
+        }
+
+        private static List<AmariItemListItem> ResolveRemovedItems(IEnumerable<int> removedIndices, List<AmariItemListItem> snapshot, List<AmariItemListItem> currentItems)
+        {
+            var indices = removedIndices?.ToList() ?? new List<int>();
+            if (snapshot == null || snapshot.Count == 0)
+            {
+                return new List<AmariItemListItem>();
+            }
+
+            var expectedRemovedCount = indices.Count;
+            if (expectedRemovedCount <= 0 && currentItems != null)
+            {
+                expectedRemovedCount = Mathf.Max(0, snapshot.Count - currentItems.Count);
+            }
+
+            var removedItems = new List<AmariItemListItem>();
+            var seen = new HashSet<AmariItemListItem>();
+
+            var currentCounts = new Dictionary<AmariItemListItem, int>();
+            if (currentItems != null)
+            {
+                foreach (var item in currentItems.Where(item => item != null))
+                {
+                    currentCounts.TryGetValue(item, out var count);
+                    currentCounts[item] = count + 1;
+                }
+            }
+
+            // 差分を基準に削除対象を特定する。indices は Unity 側の都合で不安定な場合があるため補助扱い。
+            foreach (var item in snapshot.Where(item => item != null))
+            {
+                if (currentCounts.TryGetValue(item, out var count) && count > 0)
+                {
+                    if (count == 1)
+                    {
+                        currentCounts.Remove(item);
+                    }
+                    else
+                    {
+                        currentCounts[item] = count - 1;
+                    }
+
+                    continue;
+                }
+
+                if (!seen.Add(item))
+                {
+                    continue;
+                }
+
+                removedItems.Add(item);
+            }
+
+            if (expectedRemovedCount <= 0 || removedItems.Count >= expectedRemovedCount)
+            {
+                return removedItems;
+            }
+
+            foreach (var index in indices)
+            {
+                if (index < 0 || index >= snapshot.Count)
+                {
+                    continue;
+                }
+
+                var item = snapshot[index];
+                if (item == null || !seen.Add(item))
+                {
+                    continue;
+                }
+
+                removedItems.Add(item);
+                if (removedItems.Count >= expectedRemovedCount)
+                {
+                    break;
+                }
+            }
+
+            return removedItems;
+        }
+
+        private static void ResetItemElementState(VisualElement element)
+        {
+            if (element?.userData is not ItemItemElementState state)
+            {
+                return;
+            }
+
+            state.item = null;
+            state.group = null;
+            state.listView = null;
+        }
+
+        private static void ClearItemListElementVisuals(VisualElement element)
+        {
+            if (element == null)
+            {
+                return;
+            }
+
+            var prefabField = element.Q<EditorObjectField>("ItemPrefabField");
+            if (prefabField != null)
+            {
+                prefabField.SetValueWithoutNotify(null);
+                ResetItemElementState(prefabField);
+            }
+
+            var previewButton = element.Q<Button>("ItemPreviewStatusButton");
+            if (previewButton != null)
+            {
+                SetPreviewButtonState(previewButton, false);
+                ResetItemElementState(previewButton);
+            }
+
+            var includeInBuildToggle = element.Q<Toggle>("IncludeInBuildToggle");
+            if (includeInBuildToggle != null)
+            {
+                includeInBuildToggle.SetValueWithoutNotify(false);
+                ResetItemElementState(includeInBuildToggle);
+            }
+
+            var itemInfoButton = element.Q<Button>("ItemInfoButton");
+            if (itemInfoButton != null)
+            {
+                SetItemInfoButtonState(itemInfoButton, false);
+                if (itemInfoButton.userData is ItemInfoButtonState infoState)
+                {
+                    infoState.item = null;
+                }
+            }
+        }
+
         private static void BindItemInfoButton(Button button, AmariItemListItem item, System.Action<AmariItemListItem> onClick)
         {
             if (button == null)
@@ -503,6 +655,11 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             CheckOrActivatePreviewItem(group, item);
             UpdatePreviewInstanceActiveStates();
             MarkSettingsDirty();
+
+            if (group != null && _groupToListView.TryGetValue(group, out var listViewForGroup))
+            {
+                SyncItemListSnapshot(listViewForGroup, group);
+            }
         }
 
         private void OnItemPrefabValueChanged(EditorObjectField prefabField, AmariItemListItem item, GameObject prefab, AmariItemGroupListItem group)
@@ -634,7 +791,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             UpdateItemCheckResultsForGroup(group);
             if (group != null && _groupToListView.TryGetValue(group, out var listViewForGroup))
             {
-                listViewForGroup.RefreshItems();
+                listViewForGroup.Rebuild();
             }
             return true;
         }
@@ -660,7 +817,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             {
                 var group = FindItemGroupByList(targetList);
                 UpdateItemCheckResultsForGroup(group);
-                listView.RefreshItems();
+                SyncItemListSnapshot(listView, group);
+                listView.Rebuild();
             }
         }
 
@@ -804,6 +962,14 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             scaleField?.SetValueWithoutNotify(1f);
             if (listView != null)
             {
+                if (listView.userData is ItemListViewState state && state.group != null)
+                {
+                    _groupToListView.Remove(state.group);
+                    state.group = null;
+                }
+
+                _listViewToTargetList.Remove(listView);
+                _itemListSnapshots.Remove(listView);
                 listView.itemsSource = null;
                 listView.makeItem = null;
                 listView.bindItem = null;
@@ -869,23 +1035,26 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             {
                 if (!_listViewToTargetList.TryGetValue(itemListView, out var targetList) || targetList == null)
                 {
+                    ClearItemListElementVisuals(element);
                     return;
                 }
 
                 if (index < 0 || index >= targetList.Count)
                 {
+                    ClearItemListElementVisuals(element);
                     return;
                 }
 
+                var currentGroup = FindItemGroupByList(targetList);
+                SyncItemListSnapshot(itemListView, currentGroup);
                 var item = targetList[index];
                 if (item == null)
                 {
                     item = new AmariItemListItem();
                     targetList[index] = item;
                     MarkSettingsDirty();
+                    SyncItemListSnapshot(itemListView, currentGroup);
                 }
-
-                var currentGroup = FindItemGroupByList(targetList);
 
                 var prefabField = element.Q<EditorObjectField>("ItemPrefabField");
                 if (prefabField == null)
@@ -1008,6 +1177,37 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             {
                 listViewState.bound = true;
 
+                itemListView.itemsAdded += indices =>
+                {
+                    if (itemListView.userData is not ItemListViewState state || state.group?.itemListItems == null)
+                    {
+                        return;
+                    }
+
+                    foreach (var index in indices)
+                    {
+                        if (index < 0 || index >= state.group.itemListItems.Count)
+                        {
+                            continue;
+                        }
+
+                        if (state.group.itemListItems[index] != null)
+                        {
+                            continue;
+                        }
+
+                        state.group.itemListItems[index] = new AmariItemListItem();
+                    }
+
+                    MarkSettingsDirty();
+
+                    SyncItemListSnapshot(itemListView, state.group);
+                    if (state.group != null && _groupToListView.TryGetValue(state.group, out var listViewForGroup))
+                    {
+                        listViewForGroup.Rebuild();
+                    }
+                };
+
                 itemListView.itemsRemoved += indices =>
                 {
                     if (itemListView.userData is not ItemListViewState state || state.group?.itemListItems == null)
@@ -1015,26 +1215,18 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                         return;
                     }
 
+                    var removedIndices = indices?.ToList() ?? new List<int>();
+
                     RecordSettingsUndo("Remove Item Prefab");
                     if (!_itemListSnapshots.TryGetValue(itemListView, out var snapshot))
                     {
-                        snapshot = state.group.itemListItems.ToList();
+                        snapshot = new List<AmariItemListItem>();
                     }
 
+                    var removedItems = ResolveRemovedItems(removedIndices, snapshot, state.group.itemListItems);
                     var previewChanged = false;
-                    foreach (var i in indices)
+                    foreach (var item in removedItems)
                     {
-                        if (i < 0 || i >= snapshot.Count)
-                        {
-                            continue;
-                        }
-
-                        var item = snapshot[i];
-                        if (item == null)
-                        {
-                            continue;
-                        }
-
                         if (item.instance)
                         {
                             Undo.DestroyObjectImmediate(item.instance);
@@ -1055,10 +1247,10 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
                     UpdateItemCheckResultsForGroup(state.group);
                     MarkSettingsDirty();
-                    _itemListSnapshots[itemListView] = state.group.itemListItems.ToList();
+                    SyncItemListSnapshot(itemListView, state.group);
                     if (state.group != null && _groupToListView.TryGetValue(state.group, out var listViewForGroup))
                     {
-                        listViewForGroup.RefreshItems();
+                        listViewForGroup.Rebuild();
                     }
                 };
 
@@ -1066,7 +1258,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
 
             ApplyScaleMultiplyToGroup(group);
-            _itemListSnapshots[itemListView] = group.itemListItems.ToList();
+            SyncItemListSnapshot(itemListView, group);
             itemListView.Rebuild();
         }
     }
