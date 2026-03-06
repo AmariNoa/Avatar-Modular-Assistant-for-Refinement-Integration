@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using com.amari_noa.avatar_modular_assistant.runtime;
+using com.amari_noa.avatar_modular_assistant.editor.integrations;
 using com.amari_noa.avatar_modular_assistant.editor.integrations.modular_avatar;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -592,6 +593,11 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             Debug.Log($"[AMARI] Item info clicked: {item.prefabGuid}");
         }
 
+        private AmariOutfitToolType GetCurrentOutfitToolType()
+        {
+            return _avatarSettings?.outfitToolType ?? AmariOutfitToolType.None;
+        }
+
         private bool ShouldNotifyItemInfo(AmariItemListItem item)
         {
             if (item == null)
@@ -599,12 +605,60 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 return false;
             }
 
-            if (!_itemCheckResults.TryGetValue(item, out var result))
+            switch (GetCurrentOutfitToolType())
             {
-                return false;
+                case AmariOutfitToolType.None:
+                    return false;
+                case AmariOutfitToolType.ModularAvatar:
+                    if (!_itemCheckResults.TryGetValue(item, out var result))
+                    {
+                        return false;
+                    }
+
+                    return result.Suggestion != AmariModularAvatarSuggestedAction.None;
+                default:
+                    // 未実装のツール種別は警告なし扱いにする
+                    return false;
+            }
+        }
+
+        private void UpdateItemCheckResultsForGroup(AmariItemGroupListItem group)
+        {
+            if (group?.itemListItems == null)
+            {
+                return;
             }
 
-            return result.Suggestion != AmariModularAvatarSuggestedAction.None;
+            foreach (var item in group.itemListItems.Where(item => item != null))
+            {
+                _itemCheckResults.Remove(item);
+            }
+
+            switch (GetCurrentOutfitToolType())
+            {
+                case AmariOutfitToolType.None:
+                    // None は全て問題なし扱い
+                    return;
+                case AmariOutfitToolType.ModularAvatar:
+                    if (!AmariModularAvatarIntegration.IsInstalled())
+                    {
+                        return;
+                    }
+
+                    var checkResults = AmariModularAvatarIntegration.CheckGroup(group);
+                    foreach (var item in group.itemListItems.Where(item => item?.instance != null))
+                    {
+                        if (checkResults.TryGetValue(item.instance, out var result))
+                        {
+                            _itemCheckResults[item] = result;
+                        }
+                    }
+
+                    return;
+                default:
+                    // 未実装のツール種別は警告なし扱い
+                    return;
+            }
         }
 
         private GameObject UpdatePrefabInstanceInScene(AmariItemListItem item, GameObject newPrefab, bool registerUndo = false, string undoName = null)
@@ -974,33 +1028,6 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 listView.makeItem = null;
                 listView.bindItem = null;
                 listView.Rebuild();
-            }
-        }
-
-        private void UpdateItemCheckResultsForGroup(AmariItemGroupListItem group)
-        {
-            if (group?.itemListItems == null)
-            {
-                return;
-            }
-
-            foreach (var item in group.itemListItems.Where(item => item != null))
-            {
-                _itemCheckResults.Remove(item);
-            }
-
-            if (!AmariModularAvatarIntegration.IsInstalled())
-            {
-                return;
-            }
-
-            var checkResults = AmariModularAvatarIntegration.CheckGroup(group);
-            foreach (var item in group.itemListItems.Where(item => item?.instance != null))
-            {
-                if (checkResults.TryGetValue(item.instance, out var result))
-                {
-                    _itemCheckResults[item] = result;
-                }
             }
         }
 

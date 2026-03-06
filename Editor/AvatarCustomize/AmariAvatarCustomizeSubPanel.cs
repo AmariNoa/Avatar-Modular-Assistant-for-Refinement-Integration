@@ -8,6 +8,36 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 {
     public partial class AmariAvatarCustomizeWindow
     {
+        private void RefreshItemChecksForCurrentOutfitTool(VisualElement root)
+        {
+            if (_avatarSettings?.ItemListGroupItems != null)
+            {
+                for (var i = 0; i < _avatarSettings.ItemListGroupItems.Count; i++)
+                {
+                    var group = _avatarSettings.ItemListGroupItems[i];
+                    if (group == null)
+                    {
+                        continue;
+                    }
+
+                    UpdateItemCheckResultsForGroup(group);
+                }
+            }
+
+            var rebuiltViews = new HashSet<ListView>();
+            foreach (var (_, listView) in _groupToListView)
+            {
+                if (listView == null || !rebuiltViews.Add(listView))
+                {
+                    continue;
+                }
+
+                listView.Rebuild();
+            }
+
+            SetupLocalizationTextItem(root ?? rootVisualElement);
+        }
+
         private void BuildSubPanel(VisualElement root)
         {
             var toolTypeDd = root.Q<DropdownField>("OutfitToolType");
@@ -43,8 +73,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 _avatarSettings.outfitToolType = newToolType;
                 MarkSettingsDirty();
 
-                // TODO 実装 ツール切り替え
-                // 各種チェックを回し直してUIに反映
+                // ツール切り替えに応じて、チェック結果と表示を最新化
+                RefreshItemChecksForCurrentOutfitTool(root);
             });
         }
     }
