@@ -16,6 +16,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
     {
         private const string PresetParentDirPath = "Assets/_AMARI_DATA/Avatars";
         private const string DefaultLanguageCode = "en-US";
+        private const string PresetFileExtension = "amra";
+        private const string PresetFileSearchPattern = "*." + PresetFileExtension;
 
         private static readonly List<AvatarPreset> PresetList = new();
         private static readonly Dictionary<string, AvatarPreset> PresetByPath = new(StringComparer.OrdinalIgnoreCase);
@@ -198,7 +200,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             IEnumerator<string> iterator;
             try
             {
-                iterator = Directory.EnumerateFiles(rootPath, "*.json", SearchOption.AllDirectories).GetEnumerator();
+                iterator = Directory.EnumerateFiles(rootPath, PresetFileSearchPattern, SearchOption.AllDirectories).GetEnumerator();
             }
             catch (Exception ex)
             {
