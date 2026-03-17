@@ -10,7 +10,19 @@
         "scaleMultiplyLabel": "Scale Multiply",
         "previewButtonPreview": "Preview",
         "previewButtonPreviewing": "Previewing",
-        "sharedBaseBodyCandidateEmpty": "No shared base body candidates were found"
+        "sharedBaseBodyCandidateEmpty": "No shared base body candidates were found",
+        "itemInfo": {
+          "noIssueMessage": "No critical issues or warnings were found for this item.",
+          "defaultActionButton": "Handle",
+          "modularAvatar": {
+            "addBoneProxyMessage": "Modular Avatar Bone Proxy is recommended for this item.",
+            "addBoneProxyActionButton": "Add Bone Proxy",
+            "addMergeArmatureMessage": "Modular Avatar Merge Armature is recommended for this item.",
+            "addMergeArmatureActionButton": "Add Merge Armature",
+            "unknownWarningMessage": "A warning was detected.",
+            "unknownWarningActionButton": "Resolve Warning"
+          }
+        }
       }
     }
   }

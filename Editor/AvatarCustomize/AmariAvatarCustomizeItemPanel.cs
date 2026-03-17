@@ -46,6 +46,96 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             public AmariItemGroupListItem group;
         }
 
+        private sealed class ItemInfoPopupIssue
+        {
+            public AmariSeverity severity;
+            public string message;
+            public string actionButtonLabel;
+            public System.Action onAction;
+        }
+
+        private sealed class ItemInfoPopupContent : UnityEditor.PopupWindowContent
+        {
+            private readonly System.Func<IReadOnlyList<ItemInfoPopupIssue>> _issueProvider;
+            private Vector2 _scrollPosition;
+
+            public ItemInfoPopupContent(System.Func<IReadOnlyList<ItemInfoPopupIssue>> issueProvider)
+            {
+                _issueProvider = issueProvider;
+            }
+
+            public override Vector2 GetWindowSize()
+            {
+                var issues = GetCurrentIssues();
+                if (issues.Count == 0)
+                {
+                    return new Vector2(440f, 92f);
+                }
+
+                var visibleRows = Mathf.Clamp(issues.Count, 1, 6);
+                return new Vector2(440f, 22f + visibleRows * 94f);
+            }
+
+            public override void OnGUI(Rect rect)
+            {
+                GUILayout.Space(4f);
+
+                var issues = GetCurrentIssues();
+                if (issues.Count == 0)
+                {
+                    EditorGUILayout.HelpBox(
+                        AmariLocalization.Get(
+                            "amari.window.avatarCustomize.itemInfo.noIssueMessage",
+                            "No critical issues or warnings were found for this item."),
+                        MessageType.Info);
+                    return;
+                }
+
+                _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
+                foreach (var issue in issues)
+                {
+                    if (issue == null)
+                    {
+                        continue;
+                    }
+
+                    EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+                    EditorGUILayout.HelpBox(issue.message ?? string.Empty, ToMessageType(issue.severity));
+                    if (GUILayout.Button(
+                            issue.actionButtonLabel ??
+                            AmariLocalization.Get(
+                                "amari.window.avatarCustomize.itemInfo.defaultActionButton",
+                                "Handle"),
+                            GUILayout.Height(20f)))
+                    {
+                        issue.onAction?.Invoke();
+                        editorWindow?.Repaint();
+                        GUIUtility.ExitGUI();
+                    }
+
+                    EditorGUILayout.EndVertical();
+                    GUILayout.Space(2f);
+                }
+
+                EditorGUILayout.EndScrollView();
+            }
+
+            private IReadOnlyList<ItemInfoPopupIssue> GetCurrentIssues()
+            {
+                return _issueProvider?.Invoke() ?? System.Array.Empty<ItemInfoPopupIssue>();
+            }
+
+            private static MessageType ToMessageType(AmariSeverity severity)
+            {
+                return severity switch
+                {
+                    AmariSeverity.Critical => MessageType.Error,
+                    AmariSeverity.Warning => MessageType.Warning,
+                    _ => MessageType.Info
+                };
+            }
+        }
+
         private static void EnsureItemIconsLoaded()
         {
             if (_itemIconsLoaded)
@@ -555,7 +645,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
         }
 
-        private static void BindItemInfoButton(Button button, AmariItemListItem item, System.Action<AmariItemListItem> onClick)
+        private static void BindItemInfoButton(Button button, AmariItemListItem item, System.Action<AmariItemListItem, Rect> onClick)
         {
             if (button == null)
             {
@@ -578,19 +668,129 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     return;
                 }
 
-                onClick?.Invoke(s.item);
+                onClick?.Invoke(s.item, button.worldBound);
             };
         }
 
-        private static void OnItemInfoButtonClicked(AmariItemListItem item)
+        private void OnItemInfoButtonClicked(AmariItemListItem item, Rect anchorRect)
         {
-            // TODO: implement the actual behavior to guide the user to pending actions.
             if (item == null)
             {
                 return;
             }
 
-            Debug.Log($"[AMARI] Item info clicked: {item.prefabGuid}");
+            UnityEditor.PopupWindow.Show(anchorRect, new ItemInfoPopupContent(() => BuildItemInfoPopupIssues(item)));
+        }
+
+        private List<ItemInfoPopupIssue> BuildItemInfoPopupIssues(AmariItemListItem item)
+        {
+            var issues = new List<ItemInfoPopupIssue>();
+            if (item == null)
+            {
+                return issues;
+            }
+
+            switch (GetCurrentOutfitToolType())
+            {
+                case AmariOutfitToolType.None:
+                    return issues;
+                case AmariOutfitToolType.ModularAvatar:
+                    if (!_itemCheckResults.TryGetValue(item, out var result))
+                    {
+                        return issues;
+                    }
+
+                    if (TryBuildModularAvatarIssue(item, result, out var modularAvatarIssue))
+                    {
+                        issues.Add(modularAvatarIssue);
+                    }
+
+                    return issues;
+                default:
+                    // 未実装のツール種別は警告なし扱いにする
+                    return issues;
+            }
+        }
+
+        private bool TryBuildModularAvatarIssue(AmariItemListItem item, AmariModularAvatarCheckResult result, out ItemInfoPopupIssue issue)
+        {
+            issue = null;
+            switch (result.Suggestion)
+            {
+                case AmariModularAvatarSuggestedAction.None:
+                    return false;
+                case AmariModularAvatarSuggestedAction.AddBoneProxy:
+                    issue = new ItemInfoPopupIssue
+                    {
+                        severity = AmariSeverity.Critical,
+                        message = AmariLocalization.Get(
+                            "amari.window.avatarCustomize.itemInfo.modularAvatar.addBoneProxyMessage",
+                            "Modular Avatar Bone Proxy is recommended for this item."),
+                        actionButtonLabel = AmariLocalization.Get(
+                            "amari.window.avatarCustomize.itemInfo.modularAvatar.addBoneProxyActionButton",
+                            "Add Bone Proxy"),
+                        onAction = () => { }
+                    };
+                    return true;
+                case AmariModularAvatarSuggestedAction.AddMergeArmature:
+                    issue = new ItemInfoPopupIssue
+                    {
+                        severity = AmariSeverity.Critical,
+                        message = AmariLocalization.Get(
+                            "amari.window.avatarCustomize.itemInfo.modularAvatar.addMergeArmatureMessage",
+                            "Modular Avatar Merge Armature is recommended for this item."),
+                        actionButtonLabel = AmariLocalization.Get(
+                            "amari.window.avatarCustomize.itemInfo.modularAvatar.addMergeArmatureActionButton",
+                            "Add Merge Armature"),
+                        onAction = () => ExecuteSetupOutfitForItem(item)
+                    };
+                    return true;
+                default:
+                    issue = new ItemInfoPopupIssue
+                    {
+                        severity = AmariSeverity.Critical,
+                        message = !string.IsNullOrWhiteSpace(result.Reason)
+                            ? result.Reason
+                            : AmariLocalization.Get(
+                                "amari.window.avatarCustomize.itemInfo.modularAvatar.unknownWarningMessage",
+                                "A warning was detected."),
+                        actionButtonLabel = AmariLocalization.Get(
+                            "amari.window.avatarCustomize.itemInfo.modularAvatar.unknownWarningActionButton",
+                            "Resolve Warning"),
+                        onAction = () => { }
+                    };
+                    return true;
+            }
+        }
+
+        private void ExecuteSetupOutfitForItem(AmariItemListItem item)
+        {
+            if (item?.instance == null)
+            {
+                return;
+            }
+
+            if (!TryInvokeSetupOutfitUi(item.instance))
+            {
+                return;
+            }
+
+            var group = FindItemGroupByItem(item);
+            UpdateItemCheckResultsForGroup(group);
+            if (group != null && _groupToListView.TryGetValue(group, out var listViewForGroup))
+            {
+                listViewForGroup.RefreshItems();
+            }
+        }
+
+        private static bool TryInvokeSetupOutfitUi(GameObject outfitRoot)
+        {
+            if (outfitRoot == null)
+            {
+                return false;
+            }
+
+            return AmariModularAvatarIntegration.TrySetupOutfitUi(outfitRoot);
         }
 
         private AmariOutfitToolType GetCurrentOutfitToolType()

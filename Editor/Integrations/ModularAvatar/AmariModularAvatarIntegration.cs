@@ -3,7 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using com.amari_noa.avatar_modular_assistant.runtime;
 using UnityEngine;
+
+#if AMARI_MA_INSTALLED
 using nadena.dev.modular_avatar.core;
+using nadena.dev.modular_avatar.core.editor;
+#endif
 
 // ReSharper disable once CheckNamespace
 namespace com.amari_noa.avatar_modular_assistant.editor.integrations.modular_avatar
@@ -65,6 +69,29 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.modular_ava
         {
 #if AMARI_MA_INSTALLED
             return true;
+#else
+            return false;
+#endif
+        }
+
+        public static bool TrySetupOutfitUi(GameObject outfitRoot)
+        {
+            if (outfitRoot == null)
+            {
+                return false;
+            }
+
+#if AMARI_MA_INSTALLED
+            try
+            {
+                SetupOutfit.SetupOutfitUI(outfitRoot);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[AMARI] Failed to invoke SetupOutfitUI: {ex.Message}");
+                return false;
+            }
 #else
             return false;
 #endif
@@ -205,6 +232,11 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.modular_ava
                 var child = t.GetChild(i);
                 var onChild = GetMaKindOnGameObject(child.gameObject);
                 if (onChild != AmariModularAvatarComponentKind.None) return onChild;
+            }
+
+            if (root != null && root.GetComponentsInChildren<ModularAvatarBoneProxy>(true).Length > 0)
+            {
+                return AmariModularAvatarComponentKind.BoneProxy;
             }
 
             return AmariModularAvatarComponentKind.None;

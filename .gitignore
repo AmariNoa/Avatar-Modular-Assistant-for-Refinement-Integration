@@ -99,5 +99,5 @@ InitTestScene*.unity*
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
 
 # Additional settings for AMARI repo
-Full-Spec.md
-Full-Spec.md.meta
+/Spec-WIP/*
+Spec-WIP.meta

@@ -10,7 +10,19 @@
         "scaleMultiplyLabel": "スケール倍率",
         "previewButtonPreview": "プレビュー",
         "previewButtonPreviewing": "プレビュー中",
-        "sharedBaseBodyCandidateEmpty": "共通素体の候補がありません"
+        "sharedBaseBodyCandidateEmpty": "共通素体の候補がありません",
+        "itemInfo": {
+          "noIssueMessage": "このアイテムにクリティカルや警告はありません。",
+          "defaultActionButton": "対処する",
+          "modularAvatar": {
+            "addBoneProxyMessage": "このアイテムには Modular Avatar の Bone Proxy の追加が必要です。",
+            "addBoneProxyActionButton": "Bone Proxy を追加",
+            "addMergeArmatureMessage": "このアイテムには Modular Avatar の Merge Armature の追加が必要です。",
+            "addMergeArmatureActionButton": "Merge Armature を追加",
+            "unknownWarningMessage": "要確認の項目が検出されました。",
+            "unknownWarningActionButton": "対処を進める"
+          }
+        }
       }
     }
   }
