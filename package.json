@@ -6,7 +6,7 @@
   "description": "A modular avatar editing assistant for VRChat, designed to modify items and components as independent modules.",
   "author": {
     "name": "Amari Noa",
-    "url": "https://github.com/AmariNoa/Avatar-Modular-Assistant-for-Refinement-Integration"
+    "url": "https://amari-noa.com/"
   },
   "dependencies": {
     "com.unity.nuget.newtonsoft-json": "2.0.0"

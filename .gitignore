@@ -98,6 +98,11 @@ InitTestScene*.unity*
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
 
-# Additional settings for AMARI repo
-/Spec-WIP/*
-Spec-WIP.meta
+# LICENSE.meta
+LICENSE.meta
+COPYING.md.meta
+
+
+# Othr files
+/Spec/*
+Spec.meta
