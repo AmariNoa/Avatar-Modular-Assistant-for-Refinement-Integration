@@ -57,6 +57,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
         {
             Undo.undoRedoPerformed -= OnUndoRedoPerformed;
             EditorLocalization.Service.LanguageChanged -= OnLanguageChanged;
+            CleanupImportIntegrationOnDisable();
         }
 
         private void OnLanguageChanged(string _)
@@ -281,6 +282,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
 
             var root = rootVisualElement;
+            root.Clear();
 
             VisualElement labelFromUxml = visualTreeAsset.Instantiate();
             root.Add(labelFromUxml);
@@ -296,6 +298,9 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             // ItemList ----------
             BuildItemGroupTabPanel(root);
+
+            // Import Buttons ----------
+            SetupImportButtons(root);
         }
     }
 }

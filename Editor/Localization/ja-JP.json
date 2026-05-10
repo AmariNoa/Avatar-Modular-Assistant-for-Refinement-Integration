@@ -5,6 +5,44 @@
       "avatarCustomize": {
         "panelItemTitle": "アイテム一覧",
         "editorLanguageLabel": "言語:",
+        "importUnityPackageButton": "unitypackageをインポート",
+        "importBlmButton": "BOOTH Library Managerからファイルをインポート",
+        "import": {
+          "failure": {
+            "title": "インポート失敗",
+            "summary": "1件以上のインポートに失敗しました。",
+            "status": "ステータス",
+            "statusUnknown": "不明",
+            "statusCancelled": "キャンセル",
+            "statusFailed": "失敗",
+            "error": "エラー",
+            "failedFiles": "失敗したファイルパス",
+            "cancelled": {
+              "message": "インポートをキャンセルしました。",
+              "byWindowClose": "UnityPackageのインポートウィンドウを閉じたため、インポートをキャンセルしました。",
+              "byHangTimeout": "インポート確定後にUnityが応答しなくなったため、インポートをキャンセルしました。",
+              "byPipelineReset": "インポートパイプラインがリセットされたため、インポートをキャンセルしました。",
+              "byStaleRecovery": "パイプラインの不整合状態を回復するため、インポートをキャンセルしました。"
+            },
+            "failed": {
+              "byWindowTypesUnresolved": "Package Import ウィンドウを解決できなかったため、インタラクティブなインポートを開始できませんでした。",
+              "pipelineUnavailable": "UnityPackage のインポートパイプラインを利用できません。"
+            }
+          }
+        },
+        "blm": {
+          "amri_modal": {
+            "title": "AMRI読み込み確認",
+            "header_format": "Batch: {0} / {1} 件",
+            "import_selected": "選択項目を読み込む",
+            "skip": "スキップ",
+            "select_all": "全て選択",
+            "deselect_all": "全て解除",
+            "status_info": "読み込み済み",
+            "status_warning": "一部読み込み済み",
+            "status_critical": "未読み込み"
+          }
+        },
         "includeInBuildTitle": "ビルドに含める",
         "itemGroupNameLabel": "アイテムグループ名",
         "scaleMultiplyLabel": "スケール倍率",

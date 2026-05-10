@@ -6,7 +6,9 @@
         "GUID:6e9c6119ac4eb334284fb7b4bc6d1f05",
         "GUID:0c825f95da9c30544a36d92979fcae14",
         "GUID:f5b48415282ca0d418278540ee3fef95",
-        "com.amari-noa.unity-editor-localization-core.editor"
+        "com.amari-noa.avatar-modular-assistant.editor.integrations.blm-integration-core",
+        "com.amari-noa.unity-editor-localization-core.editor",
+        "com.amari-noa.unitypackage-pipeline-core.editor"
     ],
     "includePlatforms": [
         "Editor"

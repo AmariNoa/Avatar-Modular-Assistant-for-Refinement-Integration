@@ -723,10 +723,10 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     issue = new ItemInfoPopupIssue
                     {
                         severity = AmariSeverity.Critical,
-                        message = Localize(
+                    message = Localize(
                             "amari.window.avatarCustomize.itemInfo.modularAvatar.addBoneProxyMessage",
                             "Modular Avatar Bone Proxy is recommended for this item."),
-                        actionButtonLabel = Localize(
+                    actionButtonLabel = Localize(
                             "amari.window.avatarCustomize.itemInfo.modularAvatar.addBoneProxyActionButton",
                             "Add Bone Proxy"),
                         onAction = () => { }
@@ -736,10 +736,10 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     issue = new ItemInfoPopupIssue
                     {
                         severity = AmariSeverity.Critical,
-                        message = Localize(
+                    message = Localize(
                             "amari.window.avatarCustomize.itemInfo.modularAvatar.addMergeArmatureMessage",
                             "Modular Avatar Merge Armature is recommended for this item."),
-                        actionButtonLabel = Localize(
+                    actionButtonLabel = Localize(
                             "amari.window.avatarCustomize.itemInfo.modularAvatar.addMergeArmatureActionButton",
                             "Add Merge Armature"),
                         onAction = () => ExecuteSetupOutfitForItem(item)
@@ -751,10 +751,10 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                         severity = AmariSeverity.Critical,
                         message = !string.IsNullOrWhiteSpace(result.Reason)
                             ? result.Reason
-                            : Localize(
+                        : Localize(
                                 "amari.window.avatarCustomize.itemInfo.modularAvatar.unknownWarningMessage",
                                 "A warning was detected."),
-                        actionButtonLabel = Localize(
+                    actionButtonLabel = Localize(
                             "amari.window.avatarCustomize.itemInfo.modularAvatar.unknownWarningActionButton",
                             "Resolve Warning"),
                         onAction = () => { }
@@ -1159,13 +1159,37 @@ namespace com.amari_noa.avatar_modular_assistant.editor
         // TODO 色々なパネルのラベル更新処理が混ざってるので移動を検討したい
         private void SetupLocalizationTextItem(VisualElement root)
         {
+            if (root == null)
+            {
+                return;
+            }
+
             var itemPanelTitle = root.Q<Label>("ItemPanelTitle");
-            itemPanelTitle.text = Localize("amari.window.avatarCustomize.panelItemTitle");
+            if (itemPanelTitle != null)
+            {
+                itemPanelTitle.text = Localize("amari.window.avatarCustomize.panelItemTitle");
+            }
 
             var editorLanguage = root.Q<DropdownField>("EditorLanguage");
             if (editorLanguage != null)
             {
                 editorLanguage.label = Localize("amari.window.avatarCustomize.editorLanguageLabel");
+            }
+
+            var importUnityPackageButton = root.Q<Button>("ImportUnityPackageButton");
+            if (importUnityPackageButton != null)
+            {
+                importUnityPackageButton.text = Localize(
+                    "amari.window.avatarCustomize.importUnityPackageButton",
+                    "Import unitypackage");
+            }
+
+            var importBlmButton = root.Q<Button>("ImportBLMButton");
+            if (importBlmButton != null)
+            {
+                importBlmButton.text = Localize(
+                    "amari.window.avatarCustomize.importBlmButton",
+                    "Import file(s) from BOOTH Library Manager");
             }
 
             var itemGroupNameFields = root.Query<TextField>("ItemGroupNameField").ToList();

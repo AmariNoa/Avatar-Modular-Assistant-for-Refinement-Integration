@@ -5,6 +5,44 @@
       "avatarCustomize": {
         "panelItemTitle": "Item List",
         "editorLanguageLabel": "Language:",
+        "importUnityPackageButton": "Import unitypackage",
+        "importBlmButton": "Import file(s) from BOOTH Library Manager",
+        "import": {
+          "failure": {
+            "title": "Import Failed",
+            "summary": "One or more imports failed.",
+            "status": "Status",
+            "statusUnknown": "Unknown",
+            "statusCancelled": "Cancelled",
+            "statusFailed": "Failed",
+            "error": "Error",
+            "failedFiles": "Failed file paths",
+            "cancelled": {
+              "message": "Import cancelled.",
+              "byWindowClose": "Package import was cancelled by closing the import window.",
+              "byHangTimeout": "Package import was cancelled because Unity stopped responding after the import was confirmed.",
+              "byPipelineReset": "Import was cancelled because the import pipeline was reset.",
+              "byStaleRecovery": "Import was cancelled while recovering inconsistent pipeline state."
+            },
+            "failed": {
+              "byWindowTypesUnresolved": "Failed to start interactive package import (package import window could not be resolved).",
+              "pipelineUnavailable": "UnityPackage import pipeline is not available."
+            }
+          }
+        },
+        "blm": {
+          "amri_modal": {
+            "title": "AMRI Import Confirmation",
+            "header_format": "Batch: {0} / {1} file(s)",
+            "import_selected": "Import Selected",
+            "skip": "Skip",
+            "select_all": "Select All",
+            "deselect_all": "Deselect All",
+            "status_info": "Imported",
+            "status_warning": "Partially Imported",
+            "status_critical": "Not Imported"
+          }
+        },
         "includeInBuildTitle": "Include In Build",
         "itemGroupNameLabel": "Item Group Name",
         "scaleMultiplyLabel": "Scale Multiply",

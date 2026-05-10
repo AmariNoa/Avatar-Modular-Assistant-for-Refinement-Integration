@@ -1,0 +1,27 @@
+{
+    "name": "com.amari-noa.avatar-modular-assistant.editor.integrations.blm-integration-core",
+    "rootNamespace": "com.amari_noa.avatar_modular_assistant.editor.integrations.blm_integration_core",
+    "references": [
+        "GUID:0c825f95da9c30544a36d92979fcae14",
+        "com.amari-noa.unity-editor-localization-core.editor",
+        "com.amari-noa.unitypackage-pipeline-core.editor",
+        "com.amari-noa.blm-integration-core.editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.amari-noa.blm-integration-core",
+            "expression": "",
+            "define": "AMARI_BLM_INTEGRATION_CORE_INSTALLED"
+        }
+    ],
+    "noEngineReferences": false
+}
