@@ -84,7 +84,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 if (issues.Count == 0)
                 {
                     EditorGUILayout.HelpBox(
-                        AmariLocalization.Get(
+                        Localize(
                             "amari.window.avatarCustomize.itemInfo.noIssueMessage",
                             "No critical issues or warnings were found for this item."),
                         MessageType.Info);
@@ -103,7 +103,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     EditorGUILayout.HelpBox(issue.message ?? string.Empty, ToMessageType(issue.severity));
                     if (GUILayout.Button(
                             issue.actionButtonLabel ??
-                            AmariLocalization.Get(
+                            Localize(
                                 "amari.window.avatarCustomize.itemInfo.defaultActionButton",
                                 "Handle"),
                             GUILayout.Height(20f)))
@@ -407,8 +407,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
 
             button.text = isPreviewing
-                ? AmariLocalization.Get("amari.window.avatarCustomize.previewButtonPreviewing")
-                : AmariLocalization.Get("amari.window.avatarCustomize.previewButtonPreview");
+                ? Localize("amari.window.avatarCustomize.previewButtonPreviewing")
+                : Localize("amari.window.avatarCustomize.previewButtonPreview");
             button.style.backgroundColor = isPreviewing ? new StyleColor(new Color(0.0f, 0.6f, 0.0f)) : new StyleColor(new Color(0.6f, 0.0f, 0.0f));
         }
 
@@ -723,10 +723,10 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     issue = new ItemInfoPopupIssue
                     {
                         severity = AmariSeverity.Critical,
-                        message = AmariLocalization.Get(
+                        message = Localize(
                             "amari.window.avatarCustomize.itemInfo.modularAvatar.addBoneProxyMessage",
                             "Modular Avatar Bone Proxy is recommended for this item."),
-                        actionButtonLabel = AmariLocalization.Get(
+                        actionButtonLabel = Localize(
                             "amari.window.avatarCustomize.itemInfo.modularAvatar.addBoneProxyActionButton",
                             "Add Bone Proxy"),
                         onAction = () => { }
@@ -736,10 +736,10 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     issue = new ItemInfoPopupIssue
                     {
                         severity = AmariSeverity.Critical,
-                        message = AmariLocalization.Get(
+                        message = Localize(
                             "amari.window.avatarCustomize.itemInfo.modularAvatar.addMergeArmatureMessage",
                             "Modular Avatar Merge Armature is recommended for this item."),
-                        actionButtonLabel = AmariLocalization.Get(
+                        actionButtonLabel = Localize(
                             "amari.window.avatarCustomize.itemInfo.modularAvatar.addMergeArmatureActionButton",
                             "Add Merge Armature"),
                         onAction = () => ExecuteSetupOutfitForItem(item)
@@ -751,10 +751,10 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                         severity = AmariSeverity.Critical,
                         message = !string.IsNullOrWhiteSpace(result.Reason)
                             ? result.Reason
-                            : AmariLocalization.Get(
+                            : Localize(
                                 "amari.window.avatarCustomize.itemInfo.modularAvatar.unknownWarningMessage",
                                 "A warning was detected."),
-                        actionButtonLabel = AmariLocalization.Get(
+                        actionButtonLabel = Localize(
                             "amari.window.avatarCustomize.itemInfo.modularAvatar.unknownWarningActionButton",
                             "Resolve Warning"),
                         onAction = () => { }
@@ -1160,30 +1160,30 @@ namespace com.amari_noa.avatar_modular_assistant.editor
         private void SetupLocalizationTextItem(VisualElement root)
         {
             var itemPanelTitle = root.Q<Label>("ItemPanelTitle");
-            itemPanelTitle.text = AmariLocalization.Get("amari.window.avatarCustomize.panelItemTitle");
+            itemPanelTitle.text = Localize("amari.window.avatarCustomize.panelItemTitle");
 
             var editorLanguage = root.Q<DropdownField>("EditorLanguage");
             if (editorLanguage != null)
             {
-                editorLanguage.label = AmariLocalization.Get("amari.window.avatarCustomize.editorLanguageLabel");
+                editorLanguage.label = Localize("amari.window.avatarCustomize.editorLanguageLabel");
             }
 
             var itemGroupNameFields = root.Query<TextField>("ItemGroupNameField").ToList();
             foreach (var field in itemGroupNameFields)
             {
-                field.label = AmariLocalization.Get("amari.window.avatarCustomize.itemGroupNameLabel");
+                field.label = Localize("amari.window.avatarCustomize.itemGroupNameLabel");
             }
 
             var scaleMultiplyFields = root.Query<FloatField>("ScaleMultiply").ToList();
             foreach (var field in scaleMultiplyFields)
             {
-                field.label = AmariLocalization.Get("amari.window.avatarCustomize.scaleMultiplyLabel");
+                field.label = Localize("amari.window.avatarCustomize.scaleMultiplyLabel");
             }
 
             var includeInBuildTitles = root.Query<Label>("IncludeInBuildTitle").ToList();
             foreach (var ibTitle in includeInBuildTitles)
             {
-                ibTitle.text = AmariLocalization.Get("amari.window.avatarCustomize.includeInBuildTitle");
+                ibTitle.text = Localize("amari.window.avatarCustomize.includeInBuildTitle");
             }
 
             var previewButtons = root.Query<Button>("ItemPreviewStatusButton").ToList();
@@ -1354,7 +1354,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 var includeInBuildTitle = element.Q<Label>("IncludeInBuildTitle");
                 if (includeInBuildTitle != null)
                 {
-                    includeInBuildTitle.text = AmariLocalization.Get("amari.window.avatarCustomize.includeInBuildTitle");
+                    includeInBuildTitle.text = Localize("amari.window.avatarCustomize.includeInBuildTitle");
                 }
 
                 var itemInfoButton = element.Q<Button>("ItemInfoButton");

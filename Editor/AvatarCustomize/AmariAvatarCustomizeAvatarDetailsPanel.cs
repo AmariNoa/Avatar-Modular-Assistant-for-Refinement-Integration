@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using com.amari_noa.unity_editor_localization_core.editor;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -68,7 +69,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 return string.Empty;
             }
 
-            return preset.GetAvatarName(AmariLocalization.CurrentLanguageCode);
+            return preset.GetAvatarName(EditorLocalization.Service.CurrentLanguageCode);
         }
 
         private void UpdateAvatarPresetNameLabel(VisualElement root)

@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using com.amari_noa.unity_editor_localization_core.editor;
 using Newtonsoft.Json;
 using UnityEditor;
 using com.amari_noa.avatar_modular_assistant.runtime;
@@ -85,7 +86,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 if (_candidates.Count == 0)
                 {
                     EditorGUILayout.HelpBox(
-                        AmariLocalization.Get("amari.window.avatarCustomize.sharedBaseBodyCandidateEmpty"),
+                        Localize("amari.window.avatarCustomize.sharedBaseBodyCandidateEmpty"),
                         MessageType.Info);
                     return;
                 }
@@ -225,7 +226,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 currentAvatarGuid = resolvedGuid ?? string.Empty;
             }
 
-            var languageCode = AmariLocalization.CurrentLanguageCode;
+            var languageCode = EditorLocalization.Service.CurrentLanguageCode;
             foreach (var (sharedAvatarGuid, scaleMultiply) in currentPreset.SharedBaseBody)
             {
                 if (string.IsNullOrWhiteSpace(sharedAvatarGuid))

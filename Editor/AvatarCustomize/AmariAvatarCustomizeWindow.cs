@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using com.amari_noa.unity_editor_localization_core.editor;
 using com.amari_noa.avatar_modular_assistant.runtime;
 using com.amari_noa.avatar_modular_assistant.editor.integrations.modular_avatar;
 using UnityEngine.UIElements;
@@ -37,15 +38,36 @@ namespace com.amari_noa.avatar_modular_assistant.editor
         private const string WindowTitle = "[AMARI] Avatar Customize";
         private const string AmariSettingsPrefabGuid = "2fe354710d7e2d9439856f459edadc0d";
 
+        private static string Localize(string key, string fallback = null)
+        {
+            return EditorLocalization.Service.Get(
+                AmariLocalizationSourceRegistration.SourceId,
+                key,
+                fallback);
+        }
+
         private void OnEnable()
         {
             EnsureItemIconsLoaded();
             Undo.undoRedoPerformed += OnUndoRedoPerformed;
+            EditorLocalization.Service.LanguageChanged += OnLanguageChanged;
         }
 
         private void OnDisable()
         {
             Undo.undoRedoPerformed -= OnUndoRedoPerformed;
+            EditorLocalization.Service.LanguageChanged -= OnLanguageChanged;
+        }
+
+        private void OnLanguageChanged(string _)
+        {
+            if (rootVisualElement == null)
+            {
+                return;
+            }
+
+            SetupLocalizationTextItem(rootVisualElement);
+            Repaint();
         }
 
         private void OnUndoRedoPerformed()
