@@ -60,3 +60,9 @@ To browse the package listing manually, visit:
 ### Material Batch Replacement
 - Planned functionality for bulk material reassignment
 - Intended to streamline large-scale visual adjustments
+
+---
+
+## Use of AI in Package Development
+
+- Codex and Claude Code are used in the development of this package.
