@@ -60,6 +60,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
         {
             return _isDirectImportRunning
                    || IsBlmImportQueueRunning()
+                   || (_blmIntegrationCoreBridge?.IsCatalogWindowOpen ?? false)
                    || _amriApplyModalOpenCount > 0;
         }
 
@@ -356,7 +357,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
 
             _preBlmAmriSnapshot = CaptureCurrentAmriAssetPathSnapshot();
-            if (!_blmIntegrationCoreBridge.TryOpenPicker(_avatarSettings, out var errorMessage))
+            var hostDisplayName = Localize("amari.package.displayName", "Avatar Modular Assistant for Refinement & Integration");
+            if (!_blmIntegrationCoreBridge.TryOpenPicker(_avatarSettings, hostDisplayName, out var errorMessage))
             {
                 _preBlmAmriSnapshot = null;
                 ShowImportFailureDialog(
@@ -397,6 +399,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 return false;
             }
 
+            _blmIntegrationCoreBridge.CatalogWindowOpened += OnBlmCatalogWindowOpened;
+            _blmIntegrationCoreBridge.CatalogWindowClosed += OnBlmCatalogWindowClosed;
             _blmIntegrationCoreBridge.BatchRequestReceived += OnBlmBatchRequestReceived;
             _blmIntegrationCoreBridge.BatchExecutionStarting += OnBlmBatchExecutionStarting;
             _blmIntegrationCoreBridge.AmriCandidatesReady += OnBlmAmriCandidatesReady;
@@ -414,6 +418,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             if (_isBlmEventsSubscribed)
             {
+                _blmIntegrationCoreBridge.CatalogWindowOpened -= OnBlmCatalogWindowOpened;
+                _blmIntegrationCoreBridge.CatalogWindowClosed -= OnBlmCatalogWindowClosed;
                 _blmIntegrationCoreBridge.BatchRequestReceived -= OnBlmBatchRequestReceived;
                 _blmIntegrationCoreBridge.BatchExecutionStarting -= OnBlmBatchExecutionStarting;
                 _blmIntegrationCoreBridge.AmriCandidatesReady -= OnBlmAmriCandidatesReady;
@@ -503,6 +509,16 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             _preBlmAmriSnapshot = null;
             _isBlmImportQueueStarting = false;
             _activeBlmBatchId = string.Empty;
+        }
+
+        private void OnBlmCatalogWindowOpened()
+        {
+            UpdateImportInProgressOverlayVisibility();
+        }
+
+        private void OnBlmCatalogWindowClosed()
+        {
+            UpdateImportInProgressOverlayVisibility();
         }
 
         private void OnBlmBatchRequestReceived(string batchId)

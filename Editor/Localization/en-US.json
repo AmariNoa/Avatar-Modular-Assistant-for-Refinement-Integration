@@ -1,6 +1,9 @@
 {
   "languageDisplayName": "English",
   "amari": {
+    "package": {
+      "displayName": "Avatar Modular Assistant for Refinement & Integration"
+    },
     "window": {
       "avatarCustomize": {
         "panelItemTitle": "Item List",
@@ -35,7 +38,8 @@
           }
         },
         "importInProgress": {
-          "message": "Importing..."
+          "selectingFiles": "Selecting files to import...",
+          "importing": "Importing..."
         },
         "amri_apply": {
           "title": "AMRI Apply Selection",

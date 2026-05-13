@@ -21,7 +21,6 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             _importInProgressOverlay = root.Q<VisualElement>("ImportInProgressOverlay");
             _importInProgressLabel = root.Q<Label>("ImportInProgressLabel");
-            RefreshImportInProgressOverlayLocalizedTexts();
             SubscribePipelineEventsForOverlay();
             UpdateImportInProgressOverlayVisibility();
         }
@@ -107,17 +106,29 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             _importInProgressOverlay.style.display = IsAnyImportFlowRunning()
                 ? DisplayStyle.Flex
                 : DisplayStyle.None;
+
+            if (_importInProgressLabel != null)
+            {
+                _importInProgressLabel.text = ResolveImportInProgressOverlayMessage();
+            }
         }
 
         private void RefreshImportInProgressOverlayLocalizedTexts()
         {
-            if (_importInProgressLabel == null)
+            UpdateImportInProgressOverlayVisibility();
+        }
+
+        private string ResolveImportInProgressOverlayMessage()
+        {
+            if (_blmIntegrationCoreBridge?.IsCatalogWindowOpen ?? false)
             {
-                return;
+                return Localize(
+                    "amari.window.avatarCustomize.importInProgress.selectingFiles",
+                    "Selecting files to import...");
             }
 
-            _importInProgressLabel.text = Localize(
-                "amari.window.avatarCustomize.importInProgress.message",
+            return Localize(
+                "amari.window.avatarCustomize.importInProgress.importing",
                 "Importing...");
         }
 

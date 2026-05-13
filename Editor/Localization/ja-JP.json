@@ -1,6 +1,9 @@
 {
   "languageDisplayName": "日本語",
   "amari": {
+    "package": {
+      "displayName": "Avatar Modular Assistant for Refinement & Integration"
+    },
     "window": {
       "avatarCustomize": {
         "panelItemTitle": "アイテム一覧",
@@ -35,7 +38,8 @@
           }
         },
         "importInProgress": {
-          "message": "インポート処理中..."
+          "selectingFiles": "インポートファイル選択中...",
+          "importing": "インポート中..."
         },
         "amri_apply": {
           "title": "AMRI 適用対象の選択",

@@ -41,8 +41,10 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.blm_integra
 #if AMARI_BLM_INTEGRATION_CORE_INSTALLED
         private bool _isSubscribed;
         private bool _isImportRunning;
+        private bool _isCatalogWindowOpen;
         private string _activeBatchId = string.Empty;
         private object _activeHostContext;
+        private string _activeHostDisplayName = string.Empty;
         private BlmPickerContext _activePickerContext;
         private readonly List<AmariBlmImportAmriCandidate> _pendingAmriCandidates = new();
 #endif
@@ -58,10 +60,21 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.blm_integra
 #endif
         }
 
+        public bool IsCatalogWindowOpen
+        {
+#if AMARI_BLM_INTEGRATION_CORE_INSTALLED
+            get { return _isCatalogWindowOpen; }
+#else
+            get { return false; }
+#endif
+        }
+
         public event Action<string> BatchRequestReceived;
         public event Action<string> BatchExecutionStarting;
         public event Action<string, IReadOnlyList<AmariBlmImportAmriCandidate>> AmriCandidatesReady;
         public event Action<AmariBlmImportFailureContext> ImportFailed;
+        public event Action CatalogWindowOpened;
+        public event Action CatalogWindowClosed;
 
         public AmariBlmIntegrationCoreBridge(
             IAmariUnityPackageImportPipelineService pipelineService,
@@ -78,7 +91,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.blm_integra
             ClearFlowState();
         }
 
-        public bool TryOpenPicker(object hostContext, out string errorMessage)
+        public bool TryOpenPicker(object hostContext, string hostDisplayName, out string errorMessage)
         {
 #if !AMARI_BLM_INTEGRATION_CORE_INSTALLED
             errorMessage = "BLM integration core is not available.";
@@ -90,18 +103,28 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.blm_integra
                 return false;
             }
 
-            var pickerContext = BuildPickerContext(hostContext, out errorMessage);
+            var pickerContext = BuildPickerContext(hostContext, hostDisplayName, out errorMessage);
             if (pickerContext == null)
             {
                 return false;
             }
 
             _activeHostContext = hostContext;
+            _activeHostDisplayName = hostDisplayName ?? string.Empty;
             _activePickerContext = pickerContext;
 
             try
             {
                 BlmCatalogWindowGateway.Shared.Open(pickerContext);
+                _isCatalogWindowOpen = true;
+                try
+                {
+                    CatalogWindowOpened?.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"[AMARI] CatalogWindowOpened callback failed: {ex.Message}");
+                }
                 return true;
             }
             catch (Exception ex)
@@ -123,6 +146,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.blm_integra
             try
             {
                 BlmCatalogWindowGateway.Shared.BatchRequestConfirmed += OnBatchRequestConfirmed;
+                BlmCatalogWindowGateway.Shared.WindowClosed += OnCatalogWindowClosed;
                 BlmImportProcessor.Shared.ImportBatchCompleted += OnImportBatchCompleted;
                 _isSubscribed = true;
                 return true;
@@ -145,6 +169,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.blm_integra
             try
             {
                 BlmCatalogWindowGateway.Shared.BatchRequestConfirmed -= OnBatchRequestConfirmed;
+                BlmCatalogWindowGateway.Shared.WindowClosed -= OnCatalogWindowClosed;
                 BlmImportProcessor.Shared.ImportBatchCompleted -= OnImportBatchCompleted;
             }
             catch (Exception ex)
@@ -157,7 +182,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.blm_integra
             }
         }
 
-        private BlmPickerContext BuildPickerContext(object hostContext, out string errorMessage)
+        private BlmPickerContext BuildPickerContext(object hostContext, string hostDisplayName, out string errorMessage)
         {
             var pickerContext = new BlmPickerContext
             {
@@ -167,7 +192,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.blm_integra
                 DestinationAssetPathUpdater = BlmImportProcessor.Shared,
                 EditorLocalizationService = _localizationService,
                 LocalizationSourceId = BlmLocalizationSourceId,
-                HostContext = hostContext
+                HostContext = hostContext,
+                HostDisplayName = hostDisplayName ?? string.Empty
             };
 
             if (pickerContext.ValidateRequiredServices(out errorMessage))
@@ -253,7 +279,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.blm_integra
             var pickerContext = _activePickerContext;
             if (pickerContext == null)
             {
-                pickerContext = BuildPickerContext(_activeHostContext, out _);
+                pickerContext = BuildPickerContext(_activeHostContext, _activeHostDisplayName, out _);
             }
 
             if (pickerContext == null)
@@ -377,7 +403,26 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.blm_integra
             _activeBatchId = string.Empty;
             _activePickerContext = null;
             _activeHostContext = null;
+            _activeHostDisplayName = string.Empty;
             _pendingAmriCandidates.Clear();
+        }
+
+        private void OnCatalogWindowClosed()
+        {
+            if (!_isCatalogWindowOpen)
+            {
+                return;
+            }
+
+            _isCatalogWindowOpen = false;
+            try
+            {
+                CatalogWindowClosed?.Invoke();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[AMARI] CatalogWindowClosed callback failed: {ex.Message}");
+            }
         }
 
         private static void ResetPipelineIfBusy(IAmariUnityPackageImportPipelineService pipelineService)
