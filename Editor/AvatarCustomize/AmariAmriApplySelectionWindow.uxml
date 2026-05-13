@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:VisualElement name="RootContainer" class="amri-apply-root">
+        <ui:Label name="HeaderLabel" class="amri-apply-header" />
+        <ui:VisualElement class="amri-apply-toolbar">
+            <ui:Button name="SelectAllButton" class="amri-apply-toolbar-button" />
+            <ui:Button name="DeselectAllButton" class="amri-apply-toolbar-button" />
+        </ui:VisualElement>
+        <ui:ScrollView name="ItemsScrollView" class="amri-apply-scroll" />
+        <ui:VisualElement class="amri-apply-footer">
+            <ui:Button name="CancelButton" class="amri-apply-footer-button" />
+            <ui:Button name="ApplyButton" class="amri-apply-footer-button amri-apply-footer-primary" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

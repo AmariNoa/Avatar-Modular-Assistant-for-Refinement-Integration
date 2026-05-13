@@ -57,6 +57,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
         {
             Undo.undoRedoPerformed -= OnUndoRedoPerformed;
             EditorLocalization.Service.LanguageChanged -= OnLanguageChanged;
+            UnsubscribePipelineEventsForOverlay();
             CleanupImportIntegrationOnDisable();
         }
 
@@ -68,6 +69,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
 
             SetupLocalizationTextItem(rootVisualElement);
+            RefreshImportInProgressOverlayLocalizedTexts();
             Repaint();
         }
 
@@ -285,6 +287,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             root.Clear();
 
             VisualElement labelFromUxml = visualTreeAsset.Instantiate();
+            labelFromUxml.style.flexGrow = 1f;
+            labelFromUxml.style.flexShrink = 1f;
             root.Add(labelFromUxml);
 
             // Localization ----------
@@ -301,6 +305,9 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             // Import Buttons ----------
             SetupImportButtons(root);
+
+            // Import-in-progress Overlay ----------
+            SetupImportInProgressOverlay(root);
         }
     }
 }

@@ -26,6 +26,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             public string groupName;
             public string avatarPrefabGuid;
             public float scaleMultiply = 1f;
+            public string exportedAssetPath;
             public List<ImportedItemData> items = new();
         }
 
@@ -40,6 +41,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             [JsonProperty("ItemGroupName")] public string itemGroupName;
             [JsonProperty("AvatarPrefabGuid")] public string avatarPrefabGuid;
             [JsonProperty("ScaleMultiply")] public float scaleMultiply = 1f;
+            [JsonProperty("ExportedAssetPath", NullValueHandling = NullValueHandling.Ignore)] public string exportedAssetPath;
             [JsonProperty("Items")] public Dictionary<string, ItemGroupJsonItemData> items;
         }
 
@@ -167,28 +169,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 return;
             }
 
-            if (!File.Exists(importPath))
-            {
-                Debug.LogError($"[AMARI] Item group import file not found: {importPath}");
-                return;
-            }
-
-            try
-            {
-                var json = File.ReadAllText(importPath, Encoding.UTF8);
-                if (!TryParseImportedItemGroupJson(json, out var imported, out var parseError))
-                {
-                    Debug.LogError($"[AMARI] Failed to import item group: {parseError}");
-                    return;
-                }
-
-                ImportItemGroup(imported, tabScrollView, root);
-                Debug.Log($"[AMARI] Item group imported: {importPath}");
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"[AMARI] Failed to import item group: {ex.Message}");
-            }
+            ImportSingleAmriFiles(new[] { importPath }, tabScrollView, root);
         }
 
         private void ShowScaleByPresetPopup(Button anchorButton, FloatField scaleMultiplyField, AmariItemGroupListItem group)
@@ -312,7 +293,11 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             try
             {
-                var exportRoot = BuildItemGroupExportData(_activeItemGroupTab);
+                var exportedAssetPath = AmariAmriFileUtility.IsAbsolutePathUnderItemsRoot(savePath)
+                    ? AmariAmriFileUtility.AbsoluteToAssetPath(savePath)
+                    : null;
+
+                var exportRoot = BuildItemGroupExportData(_activeItemGroupTab, exportedAssetPath);
                 var exportText = JsonConvert.SerializeObject(exportRoot, Formatting.Indented);
                 File.WriteAllText(savePath, exportText, new UTF8Encoding(false));
 
@@ -329,7 +314,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
         }
 
-        private ItemGroupJsonData BuildItemGroupExportData(AmariItemGroupListItem group)
+        private ItemGroupJsonData BuildItemGroupExportData(AmariItemGroupListItem group, string exportedAssetPath = null)
         {
             var itemsObject = new Dictionary<string, ItemGroupJsonItemData>(StringComparer.Ordinal);
             var usedItemKeys = new HashSet<string>(StringComparer.Ordinal);
@@ -361,6 +346,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 itemGroupName = group?.groupName ?? string.Empty,
                 avatarPrefabGuid = ResolveAvatarPrefabGuidForExport(),
                 scaleMultiply = group?.scaleMultiply ?? 1f,
+                exportedAssetPath = string.IsNullOrWhiteSpace(exportedAssetPath) ? null : exportedAssetPath,
                 items = itemsObject
             };
         }
@@ -490,6 +476,7 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 groupName = groupName,
                 avatarPrefabGuid = avatarPrefabGuid,
                 scaleMultiply = scaleMultiply,
+                exportedAssetPath = root.exportedAssetPath?.Trim(),
                 items = importedItems
             };
 

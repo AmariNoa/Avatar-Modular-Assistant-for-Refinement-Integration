@@ -3,3 +3,33 @@
     -unity-font-style: bold;
     color: rgb(68, 138, 255);
 }
+
+.amari-import-overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+}
+
+.amari-import-overlay-panel {
+    background-color: rgba(40, 40, 40, 0.95);
+    padding-top: 20px;
+    padding-bottom: 20px;
+    padding-left: 30px;
+    padding-right: 30px;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+.amari-import-overlay-label {
+    color: rgb(255, 255, 255);
+    -unity-text-align: middle-center;
+    font-size: 14px;
+    -unity-font-style: bold;
+}

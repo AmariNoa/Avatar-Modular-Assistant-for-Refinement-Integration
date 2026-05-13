@@ -72,4 +72,9 @@
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>
+    <ui:VisualElement name="ImportInProgressOverlay" class="amari-import-overlay" picking-mode="Position" style="display: none;">
+        <ui:VisualElement class="amari-import-overlay-panel">
+            <ui:Label name="ImportInProgressLabel" class="amari-import-overlay-label" />
+        </ui:VisualElement>
+    </ui:VisualElement>
 </ui:UXML>

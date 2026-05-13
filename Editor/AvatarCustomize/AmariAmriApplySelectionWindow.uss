@@ -1,4 +1,4 @@
-.amri-root {
+.amri-apply-root {
     flex-grow: 1;
     flex-direction: column;
     padding-left: 10px;
@@ -8,28 +8,28 @@
     row-gap: 8px;
 }
 
-.amri-header {
+.amri-apply-header {
     -unity-font-style: bold;
     font-size: 13px;
     margin-bottom: 2px;
 }
 
-.amri-toolbar {
+.amri-apply-toolbar {
     flex-direction: row;
     column-gap: 6px;
 }
 
-.amri-toolbar-button {
+.amri-apply-toolbar-button {
     flex-grow: 1;
     height: 24px;
 }
 
-.amri-scroll {
+.amri-apply-scroll {
     flex-grow: 1;
     min-height: 180px;
 }
 
-.amri-row {
+.amri-apply-row {
     flex-direction: row;
     align-items: center;
     min-width: 0;
@@ -45,29 +45,29 @@
     background-color: rgba(255, 255, 255, 0.04);
 }
 
-.amri-toggle {
+.amri-apply-toggle {
     width: 20px;
     margin-right: 6px;
 }
 
-.amri-status {
+.amri-apply-status {
     flex-direction: row;
     align-items: center;
     min-width: 154px;
     margin-right: 8px;
 }
 
-.amri-status-icon {
+.amri-apply-status-icon {
     width: 16px;
     height: 16px;
     margin-right: 6px;
 }
 
-.amri-status-label {
+.amri-apply-status-label {
     min-width: 120px;
 }
 
-.amri-path-label {
+.amri-apply-path-label {
     flex-grow: 1;
     flex-shrink: 1;
     min-width: 0;
@@ -76,16 +76,16 @@
     white-space: normal;
 }
 
-.amri-footer {
+.amri-apply-footer {
     flex-direction: row;
     column-gap: 6px;
 }
 
-.amri-footer-button {
+.amri-apply-footer-button {
     flex-grow: 1;
     height: 26px;
 }
 
-.amri-footer-primary {
+.amri-apply-footer-primary {
     -unity-font-style: bold;
 }

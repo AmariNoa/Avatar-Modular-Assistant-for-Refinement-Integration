@@ -8,6 +8,10 @@
         "importUnityPackageButton": "unitypackageをインポート",
         "importBlmButton": "BOOTH Library Managerからファイルをインポート",
         "import": {
+          "success": {
+            "title": "インポート完了",
+            "message": "{0} 件のファイルのインポートが完了しました。"
+          },
           "failure": {
             "title": "インポート失敗",
             "summary": "1件以上のインポートに失敗しました。",
@@ -30,17 +34,52 @@
             }
           }
         },
-        "blm": {
-          "amri_modal": {
-            "title": "AMRI読み込み確認",
-            "header_format": "Batch: {0} / {1} 件",
-            "import_selected": "選択項目を読み込む",
+        "importInProgress": {
+          "message": "インポート処理中..."
+        },
+        "amri_apply": {
+          "title": "AMRI 適用対象の選択",
+          "header_format": "{0} 件の amri ファイルをインポートしました。編集中のアバターへ適用する対象を選択してください。",
+          "select_all": "全て選択",
+          "deselect_all": "全て解除",
+          "cancel": "キャンセル",
+          "apply": "適用",
+          "status_info": "適用可能",
+          "status_warning": "一部欠落",
+          "status_critical": "問題あり"
+        },
+        "amriImport": {
+          "duplicateBatch": {
+            "title": "AMRI インポート: 重複ファイル",
+            "message": "{0} 件のファイルが配置先に既に存在します。どう処理しますか?",
+            "overwriteAll": "すべて上書き",
+            "skipAll": "すべてスキップ",
+            "individual": "個別に選択"
+          },
+          "duplicateItem": {
+            "title": "AMRI インポート: 重複ファイル",
+            "message": "次のパスにファイルが既に存在します:\n{0}\n\nどう処理しますか?",
+            "overwrite": "上書き",
             "skip": "スキップ",
-            "select_all": "全て選択",
-            "deselect_all": "全て解除",
-            "status_info": "読み込み済み",
-            "status_warning": "一部読み込み済み",
-            "status_critical": "未読み込み"
+            "cancelAll": "全体キャンセル"
+          },
+          "unmanagedMoveBatch": {
+            "title": "AMRI インポート: 管理フォルダへ移動しますか?",
+            "message": "{0} 件の amri ファイルが Assets/_AMARI_DATA/Items/ 以外に配置されました。\n管理フォルダへ移動しますか?",
+            "moveAll": "すべて移動",
+            "keepAll": "移動しない",
+            "individual": "個別に選択"
+          },
+          "unmanagedMoveItem": {
+            "title": "AMRI インポート: このファイルを移動しますか?",
+            "message": "次のファイルを管理フォルダへ移動しますか?\n{0}",
+            "move": "移動",
+            "keep": "移動しない",
+            "cancelAll": "全体キャンセル"
+          },
+          "broken": {
+            "title": "AMRI インポート: 破損ファイル",
+            "message": "以下の amri ファイルは解析に失敗したためスキップしました:"
           }
         },
         "includeInBuildTitle": "ビルドに含める",

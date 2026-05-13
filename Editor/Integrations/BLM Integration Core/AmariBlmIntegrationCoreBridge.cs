@@ -58,6 +58,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.blm_integra
 #endif
         }
 
+        public event Action<string> BatchRequestReceived;
+        public event Action<string> BatchExecutionStarting;
         public event Action<string, IReadOnlyList<AmariBlmImportAmriCandidate>> AmriCandidatesReady;
         public event Action<AmariBlmImportFailureContext> ImportFailed;
 
@@ -192,6 +194,15 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.blm_integra
             _pendingAmriCandidates.Clear();
             _activeBatchId = request.BatchId ?? string.Empty;
 
+            try
+            {
+                BatchRequestReceived?.Invoke(_activeBatchId);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[AMARI] BatchRequestReceived callback failed: {ex.Message}");
+            }
+
             var items = request.Items;
             if (items == null)
             {
@@ -260,6 +271,15 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.blm_integra
             try
             {
                 _isImportRunning = true;
+                try
+                {
+                    BatchExecutionStarting?.Invoke(_activeBatchId);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"[AMARI] BatchExecutionStarting callback failed: {ex.Message}");
+                }
+
                 BlmImportProcessor.Shared.Execute(request, pickerContext);
             }
             catch (Exception ex)
@@ -308,12 +328,6 @@ namespace com.amari_noa.avatar_modular_assistant.editor.integrations.blm_integra
 
         private void RaiseAmriCandidatesReady()
         {
-            if (_pendingAmriCandidates.Count == 0)
-            {
-                ClearFlowState();
-                return;
-            }
-
             var batchId = _activeBatchId;
             var snapshot = CloneCandidates(_pendingAmriCandidates);
 

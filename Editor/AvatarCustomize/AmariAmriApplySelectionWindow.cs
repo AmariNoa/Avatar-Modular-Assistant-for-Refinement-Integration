@@ -9,28 +9,27 @@ using UnityEngine.UIElements;
 // ReSharper disable once CheckNamespace
 namespace com.amari_noa.avatar_modular_assistant.editor
 {
-    public sealed class AmariBlmAmriSelectionWindow : EditorWindow
+    public sealed class AmariAmriApplySelectionWindow : EditorWindow
     {
-        private const string UxmlPath = "Packages/com.amari-noa.avatar-modular-assistant/Editor/Integrations/BLM Integration Core/AmariBlmAmriSelectionWindow.uxml";
-        private const string UssPath = "Packages/com.amari-noa.avatar-modular-assistant/Editor/Integrations/BLM Integration Core/AmariBlmAmriSelectionWindow.uss";
+        private const string UxmlPath = "Packages/com.amari-noa.avatar-modular-assistant/Editor/AvatarCustomize/AmariAmriApplySelectionWindow.uxml";
+        private const string UssPath = "Packages/com.amari-noa.avatar-modular-assistant/Editor/AvatarCustomize/AmariAmriApplySelectionWindow.uss";
 
-        public enum AmriModalItemStatus
+        public enum AmriApplyItemStatus
         {
             Info,
             Warning,
             Critical
         }
 
-        public sealed class AmriModalItem
+        public sealed class AmriApplyItem
         {
-            public string SourcePath;
+            public string AssetPath;
             public string DisplayPath;
-            public AmriModalItemStatus Status;
+            public AmriApplyItemStatus Status;
             public bool IsSelected = true;
         }
 
-        private readonly List<AmriModalItem> _items = new();
-        private string _batchId = string.Empty;
+        private readonly List<AmriApplyItem> _items = new();
         private Func<string, string, string> _localize;
         private Action<bool, IReadOnlyList<string>> _onClosed;
         private bool _isResolved;
@@ -39,18 +38,17 @@ namespace com.amari_noa.avatar_modular_assistant.editor
         private Button _selectAllButton;
         private Button _deselectAllButton;
         private ScrollView _itemsScrollView;
-        private Button _skipButton;
-        private Button _importSelectedButton;
+        private Button _cancelButton;
+        private Button _applyButton;
 
         public static void Open(
-            string batchId,
-            IReadOnlyList<AmriModalItem> items,
+            IReadOnlyList<AmriApplyItem> items,
             Func<string, string, string> localize,
             Action<bool, IReadOnlyList<string>> onClosed)
         {
-            var window = CreateInstance<AmariBlmAmriSelectionWindow>();
-            window.Initialize(batchId, items, localize, onClosed);
-            window.titleContent = new GUIContent(window.L("amari.window.avatarCustomize.blm.amri_modal.title", "AMRI Import Confirmation"));
+            var window = CreateInstance<AmariAmriApplySelectionWindow>();
+            window.Initialize(items, localize, onClosed);
+            window.titleContent = new GUIContent(window.L("amari.window.avatarCustomize.amri_apply.title", "AMRI Apply Selection"));
             window.minSize = new Vector2(780f, 420f);
             window.maxSize = new Vector2(1400f, 900f);
             window.ShowUtility();
@@ -58,12 +56,10 @@ namespace com.amari_noa.avatar_modular_assistant.editor
         }
 
         private void Initialize(
-            string batchId,
-            IReadOnlyList<AmriModalItem> items,
+            IReadOnlyList<AmriApplyItem> items,
             Func<string, string, string> localize,
             Action<bool, IReadOnlyList<string>> onClosed)
         {
-            _batchId = batchId ?? string.Empty;
             _localize = localize;
             _onClosed = onClosed;
             _isResolved = false;
@@ -76,12 +72,12 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             foreach (var item in items.Where(item => item != null))
             {
-                _items.Add(new AmriModalItem
+                _items.Add(new AmriApplyItem
                 {
-                    SourcePath = item.SourcePath,
+                    AssetPath = item.AssetPath,
                     DisplayPath = item.DisplayPath,
                     Status = item.Status,
-                    IsSelected = true
+                    IsSelected = item.IsSelected
                 });
             }
         }
@@ -133,8 +129,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             _selectAllButton = root.Q<Button>("SelectAllButton");
             _deselectAllButton = root.Q<Button>("DeselectAllButton");
             _itemsScrollView = root.Q<ScrollView>("ItemsScrollView");
-            _skipButton = root.Q<Button>("SkipButton");
-            _importSelectedButton = root.Q<Button>("ImportSelectedButton");
+            _cancelButton = root.Q<Button>("CancelButton");
+            _applyButton = root.Q<Button>("ApplyButton");
 
             if (_itemsScrollView != null)
             {
@@ -157,16 +153,16 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 _deselectAllButton.clicked += OnDeselectAllClicked;
             }
 
-            if (_skipButton != null)
+            if (_cancelButton != null)
             {
-                _skipButton.clicked -= OnSkipClicked;
-                _skipButton.clicked += OnSkipClicked;
+                _cancelButton.clicked -= OnCancelClicked;
+                _cancelButton.clicked += OnCancelClicked;
             }
 
-            if (_importSelectedButton != null)
+            if (_applyButton != null)
             {
-                _importSelectedButton.clicked -= OnImportSelectedClicked;
-                _importSelectedButton.clicked += OnImportSelectedClicked;
+                _applyButton.clicked -= OnApplyClicked;
+                _applyButton.clicked += OnApplyClicked;
             }
         }
 
@@ -179,34 +175,33 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
         private void RefreshLocalizedTexts()
         {
-            titleContent = new GUIContent(L("amari.window.avatarCustomize.blm.amri_modal.title", "AMRI Import Confirmation"));
+            titleContent = new GUIContent(L("amari.window.avatarCustomize.amri_apply.title", "AMRI Apply Selection"));
 
             if (_headerLabel != null)
             {
                 _headerLabel.text = string.Format(
-                    L("amari.window.avatarCustomize.blm.amri_modal.header_format", "Batch: {0} / {1} file(s)"),
-                    _batchId,
+                    L("amari.window.avatarCustomize.amri_apply.header_format", "{0} amri file(s) imported. Select which to apply to the current avatar."),
                     _items.Count);
             }
 
             if (_selectAllButton != null)
             {
-                _selectAllButton.text = L("amari.window.avatarCustomize.blm.amri_modal.select_all", "Select All");
+                _selectAllButton.text = L("amari.window.avatarCustomize.amri_apply.select_all", "Select All");
             }
 
             if (_deselectAllButton != null)
             {
-                _deselectAllButton.text = L("amari.window.avatarCustomize.blm.amri_modal.deselect_all", "Deselect All");
+                _deselectAllButton.text = L("amari.window.avatarCustomize.amri_apply.deselect_all", "Deselect All");
             }
 
-            if (_skipButton != null)
+            if (_cancelButton != null)
             {
-                _skipButton.text = L("amari.window.avatarCustomize.blm.amri_modal.skip", "Skip");
+                _cancelButton.text = L("amari.window.avatarCustomize.amri_apply.cancel", "Cancel");
             }
 
-            if (_importSelectedButton != null)
+            if (_applyButton != null)
             {
-                _importSelectedButton.text = L("amari.window.avatarCustomize.blm.amri_modal.import_selected", "Import Selected");
+                _applyButton.text = L("amari.window.avatarCustomize.amri_apply.apply", "Apply");
             }
         }
 
@@ -229,25 +224,25 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             }
         }
 
-        private VisualElement CreateItemRow(AmriModalItem item)
+        private VisualElement CreateItemRow(AmriApplyItem item)
         {
             var row = new VisualElement();
-            row.AddToClassList("amri-row");
+            row.AddToClassList("amri-apply-row");
 
             var toggle = new Toggle { value = item.IsSelected };
-            toggle.AddToClassList("amri-toggle");
+            toggle.AddToClassList("amri-apply-toggle");
             toggle.RegisterValueChangedCallback(evt => item.IsSelected = evt.newValue);
             row.Add(toggle);
 
             var statusContainer = new VisualElement();
-            statusContainer.AddToClassList("amri-status");
+            statusContainer.AddToClassList("amri-apply-status");
 
             var iconImage = new Image();
-            iconImage.AddToClassList("amri-status-icon");
+            iconImage.AddToClassList("amri-apply-status-icon");
             var iconName = item.Status switch
             {
-                AmriModalItemStatus.Info => "console.infoicon.sml",
-                AmriModalItemStatus.Warning => "console.warnicon.sml",
+                AmriApplyItemStatus.Info => "console.infoicon.sml",
+                AmriApplyItemStatus.Warning => "console.warnicon.sml",
                 _ => "console.erroricon.sml"
             };
             iconImage.image = EditorGUIUtility.IconContent(iconName)?.image;
@@ -255,18 +250,18 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             var statusText = item.Status switch
             {
-                AmriModalItemStatus.Info => L("amari.window.avatarCustomize.blm.amri_modal.status_info", "Imported"),
-                AmriModalItemStatus.Warning => L("amari.window.avatarCustomize.blm.amri_modal.status_warning", "Partially Imported"),
-                _ => L("amari.window.avatarCustomize.blm.amri_modal.status_critical", "Not Imported")
+                AmriApplyItemStatus.Info => L("amari.window.avatarCustomize.amri_apply.status_info", "Ready"),
+                AmriApplyItemStatus.Warning => L("amari.window.avatarCustomize.amri_apply.status_warning", "Partial"),
+                _ => L("amari.window.avatarCustomize.amri_apply.status_critical", "Issues")
             };
             var statusLabel = new Label(statusText);
-            statusLabel.AddToClassList("amri-status-label");
+            statusLabel.AddToClassList("amri-apply-status-label");
             statusContainer.Add(statusLabel);
 
             row.Add(statusContainer);
 
-            var pathLabel = new Label(item.DisplayPath ?? item.SourcePath ?? string.Empty);
-            pathLabel.AddToClassList("amri-path-label");
+            var pathLabel = new Label(item.DisplayPath ?? item.AssetPath ?? string.Empty);
+            pathLabel.AddToClassList("amri-apply-path-label");
             row.Add(pathLabel);
 
             return row;
@@ -298,17 +293,17 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             RebuildRows();
         }
 
-        private void OnSkipClicked()
+        private void OnCancelClicked()
         {
             ResolveAndClose(false);
         }
 
-        private void OnImportSelectedClicked()
+        private void OnApplyClicked()
         {
             ResolveAndClose(true);
         }
 
-        private void ResolveAndClose(bool shouldImportSelected)
+        private void ResolveAndClose(bool shouldApply)
         {
             if (_isResolved)
             {
@@ -317,17 +312,17 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             _isResolved = true;
 
-            var selectedPaths = shouldImportSelected
+            var selectedPaths = shouldApply
                 ? _items
-                    .Where(item => item != null && item.IsSelected && !string.IsNullOrWhiteSpace(item.SourcePath))
-                    .Select(item => item.SourcePath)
+                    .Where(item => item != null && item.IsSelected && !string.IsNullOrWhiteSpace(item.AssetPath))
+                    .Select(item => item.AssetPath)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToArray()
                 : Array.Empty<string>();
 
             try
             {
-                _onClosed?.Invoke(shouldImportSelected, selectedPaths);
+                _onClosed?.Invoke(shouldApply, selectedPaths);
             }
             finally
             {

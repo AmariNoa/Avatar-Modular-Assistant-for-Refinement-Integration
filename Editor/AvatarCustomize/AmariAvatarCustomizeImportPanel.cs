@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using com.amari_noa.avatar_modular_assistant.editor.integrations.blm_integration_core;
 using com.amari_noa.unity_editor_localization_core.editor;
@@ -17,7 +16,6 @@ namespace com.amari_noa.avatar_modular_assistant.editor
     public partial class AmariAvatarCustomizeWindow
     {
         private const string UnityPackageExtension = ".unitypackage";
-        private const string AmriExtension = ".amri";
 
         private Button _importUnityPackageButton;
         private Button _importBlmButton;
@@ -26,22 +24,16 @@ namespace com.amari_noa.avatar_modular_assistant.editor
         private bool _isDirectImportRunning;
         private readonly HashSet<string> _pendingDirectUnityPackagePaths = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, AmariUnityPackageImportResultContext> _directImportResultsByPath = new(StringComparer.OrdinalIgnoreCase);
-        private List<string> _pendingDirectAmriPaths = new();
+        private HashSet<string> _preDirectUnityPackageAmriSnapshot;
+        private int _importSuccessCount;
 
         private bool _isBlmBridgeInitialized;
         private bool _isBlmAvailable;
-        private bool _isBlmModalOpen;
         private bool _isBlmEventsSubscribed;
+        private bool _isBlmImportQueueStarting;
         private string _activeBlmBatchId = string.Empty;
         private AmariBlmIntegrationCoreBridge _blmIntegrationCoreBridge;
-        private readonly List<AmriImportCandidate> _pendingBlmAmriCandidates = new();
-
-        private sealed class AmriImportCandidate
-        {
-            public string SourcePath;
-            public string DisplayPath;
-            public AmriImportCandidateStatus Status;
-        }
+        private HashSet<string> _preBlmAmriSnapshot;
 
         private enum AmriImportCandidateStatus
         {
@@ -66,7 +58,14 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
         private bool IsAnyImportFlowRunning()
         {
-            return _isDirectImportRunning || (_blmIntegrationCoreBridge?.IsImportRunning ?? false) || _isBlmModalOpen;
+            return _isDirectImportRunning
+                   || IsBlmImportQueueRunning()
+                   || _amriApplyModalOpenCount > 0;
+        }
+
+        private bool IsBlmImportQueueRunning()
+        {
+            return _isBlmImportQueueStarting || !string.IsNullOrEmpty(_activeBlmBatchId);
         }
 
         private void SetupImportButtons(VisualElement root)
@@ -102,9 +101,29 @@ namespace com.amari_noa.avatar_modular_assistant.editor
         private void CleanupImportIntegrationOnDisable()
         {
             UnregisterImportButtonHandlers();
-            StopDirectImportTracking();
+            AbortInProgressImportFlows();
             UnsubscribeBlmEvents();
+        }
+
+        private void AbortInProgressImportFlows()
+        {
+            var shouldResetPipeline = _isDirectImportRunning || IsBlmImportQueueRunning();
+            StopDirectImportTracking();
             ClearBlmFlowState();
+
+            if (!shouldResetPipeline)
+            {
+                UpdateImportInProgressOverlayVisibility();
+                return;
+            }
+
+            var pipeline = AmariUnityPackageImportPipeline.Service;
+            if (pipeline != null && (pipeline.RemainingCount > 0 || pipeline.IsImporting))
+            {
+                pipeline.ResetPipelineAndClearQueue();
+            }
+
+            UpdateImportInProgressOverlayVisibility();
         }
 
         private void UnregisterImportButtonHandlers()
@@ -132,12 +151,6 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 return;
             }
 
-            if (IsAnyImportFlowRunning())
-            {
-                Debug.LogWarning("[AMARI] Another import flow is currently running.");
-                return;
-            }
-
             var selectedPaths = OpenImportFileDialog();
             if (selectedPaths.Count == 0)
             {
@@ -150,7 +163,6 @@ namespace com.amari_noa.avatar_modular_assistant.editor
         private void ExecuteDirectImportFlow(IReadOnlyList<string> selectedPaths)
         {
             var unityPackagePaths = new List<string>();
-            var amriPaths = new List<string>();
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var selectedPath in selectedPaths)
@@ -161,48 +173,31 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                     continue;
                 }
 
-                var ext = (Path.GetExtension(normalizedPath) ?? string.Empty).ToLowerInvariant();
-                switch (ext)
+                var ext = Path.GetExtension(normalizedPath).ToLowerInvariant();
+                if (!string.Equals(ext, UnityPackageExtension, StringComparison.Ordinal))
                 {
-                    case UnityPackageExtension:
-                        if (!File.Exists(normalizedPath))
-                        {
-                            Debug.LogWarning($"[AMARI] UnityPackage file not found: {normalizedPath}");
-                            continue;
-                        }
-
-                        unityPackagePaths.Add(normalizedPath);
-                        break;
-                    case AmriExtension:
-                        if (!File.Exists(normalizedPath))
-                        {
-                            Debug.LogWarning($"[AMARI] .amri file not found: {normalizedPath}");
-                            continue;
-                        }
-
-                        amriPaths.Add(normalizedPath);
-                        break;
-                    default:
-                        Debug.LogWarning($"[AMARI] Unsupported extension skipped: {selectedPath}");
-                        break;
+                    Debug.LogWarning($"[AMARI] Unsupported extension skipped: {selectedPath}");
+                    continue;
                 }
-            }
 
-            if (unityPackagePaths.Count == 0 && amriPaths.Count == 0)
-            {
-                return;
+                if (!File.Exists(normalizedPath))
+                {
+                    Debug.LogWarning($"[AMARI] UnityPackage file not found: {normalizedPath}");
+                    continue;
+                }
+
+                unityPackagePaths.Add(normalizedPath);
             }
 
             if (unityPackagePaths.Count == 0)
             {
-                ImportAmriFiles(amriPaths);
                 return;
             }
 
-            BeginDirectUnityPackageImport(unityPackagePaths, amriPaths);
+            BeginDirectUnityPackageImport(unityPackagePaths);
         }
 
-        private void BeginDirectUnityPackageImport(IReadOnlyList<string> unityPackagePaths, IReadOnlyList<string> amriPaths)
+        private void BeginDirectUnityPackageImport(IReadOnlyList<string> unityPackagePaths)
         {
             var pipeline = AmariUnityPackageImportPipeline.Service;
             if (pipeline == null)
@@ -218,7 +213,6 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             ResetUnityPackagePipelineIfBusy(pipeline);
 
-            _pendingDirectAmriPaths = amriPaths?.ToList() ?? new List<string>();
             _pendingDirectUnityPackagePaths.Clear();
             _directImportResultsByPath.Clear();
 
@@ -241,13 +235,13 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             if (requests.Count == 0)
             {
-                var directAmriPaths = _pendingDirectAmriPaths;
-                _pendingDirectAmriPaths = new List<string>();
-                ImportAmriFiles(directAmriPaths);
                 return;
             }
 
+            _preDirectUnityPackageAmriSnapshot = CaptureCurrentAmriAssetPathSnapshot();
+            _importSuccessCount = 0;
             _isDirectImportRunning = true;
+            UpdateImportInProgressOverlayVisibility();
             pipeline.ImportRequestFinalized -= OnDirectUnityPackageImportRequestFinalized;
             pipeline.ImportRequestFinalized += OnDirectUnityPackageImportRequestFinalized;
             pipeline.EnqueueMultiple(requests);
@@ -285,11 +279,11 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 })
                 .ToList();
 
-            var directAmriPaths = _pendingDirectAmriPaths?.ToList() ?? new List<string>();
             StopDirectImportTracking();
 
             if (failures.Count > 0)
             {
+                _preDirectUnityPackageAmriSnapshot = null;
                 var primary = failures.FirstOrDefault() ?? new DirectImportFailure
                 {
                     Status = AmariUnityPackagePipelineOperationStatus.Failed,
@@ -307,7 +301,23 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 return;
             }
 
-            ImportAmriFiles(directAmriPaths);
+            var snapshot = _preDirectUnityPackageAmriSnapshot;
+            _preDirectUnityPackageAmriSnapshot = null;
+
+            ShowImportSuccessDialog(_importSuccessCount);
+            _importSuccessCount = 0;
+
+            if (snapshot == null)
+            {
+                return;
+            }
+
+            var rootForUnityPackage = rootVisualElement;
+            var tabScrollViewForUnityPackage = rootForUnityPackage?.Q<ScrollView>("ItemGroupTabListView");
+            if (tabScrollViewForUnityPackage != null)
+            {
+                ProcessUnityPackageImportedAmri(snapshot, tabScrollViewForUnityPackage, rootForUnityPackage);
+            }
         }
 
         private void StopDirectImportTracking()
@@ -321,7 +331,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
             _isDirectImportRunning = false;
             _pendingDirectUnityPackagePaths.Clear();
             _directImportResultsByPath.Clear();
-            _pendingDirectAmriPaths = new List<string>();
+            _preDirectUnityPackageAmriSnapshot = null;
+            UpdateImportInProgressOverlayVisibility();
         }
 
         private void OnImportBlmButtonClicked()
@@ -338,20 +349,16 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 return;
             }
 
-            if (IsAnyImportFlowRunning())
-            {
-                Debug.LogWarning("[AMARI] Another import flow is currently running.");
-                return;
-            }
-
             if (_blmIntegrationCoreBridge == null)
             {
                 Debug.LogWarning("[AMARI] BLM integration bridge is not initialized.");
                 return;
             }
 
+            _preBlmAmriSnapshot = CaptureCurrentAmriAssetPathSnapshot();
             if (!_blmIntegrationCoreBridge.TryOpenPicker(_avatarSettings, out var errorMessage))
             {
+                _preBlmAmriSnapshot = null;
                 ShowImportFailureDialog(
                     LocalizeStatusText(AmariUnityPackagePipelineOperationStatus.Failed),
                     errorMessage,
@@ -390,6 +397,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 return false;
             }
 
+            _blmIntegrationCoreBridge.BatchRequestReceived += OnBlmBatchRequestReceived;
+            _blmIntegrationCoreBridge.BatchExecutionStarting += OnBlmBatchExecutionStarting;
             _blmIntegrationCoreBridge.AmriCandidatesReady += OnBlmAmriCandidatesReady;
             _blmIntegrationCoreBridge.ImportFailed += OnBlmImportFailed;
             _isBlmEventsSubscribed = true;
@@ -405,6 +414,8 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
             if (_isBlmEventsSubscribed)
             {
+                _blmIntegrationCoreBridge.BatchRequestReceived -= OnBlmBatchRequestReceived;
+                _blmIntegrationCoreBridge.BatchExecutionStarting -= OnBlmBatchExecutionStarting;
                 _blmIntegrationCoreBridge.AmriCandidatesReady -= OnBlmAmriCandidatesReady;
                 _blmIntegrationCoreBridge.ImportFailed -= OnBlmImportFailed;
                 _isBlmEventsSubscribed = false;
@@ -418,41 +429,53 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
         private void OnBlmAmriCandidatesReady(string batchId, IReadOnlyList<AmariBlmImportAmriCandidate> candidates)
         {
-            _pendingBlmAmriCandidates.Clear();
-            _activeBlmBatchId = batchId ?? string.Empty;
+            _ = batchId;
 
-            if (candidates != null)
+            var root = rootVisualElement;
+            var tabScrollView = root?.Q<ScrollView>("ItemGroupTabListView");
+
+            ShowImportSuccessDialog(_importSuccessCount);
+            _importSuccessCount = 0;
+
+            var snapshot = _preBlmAmriSnapshot;
+            _preBlmAmriSnapshot = null;
+            if (snapshot != null && tabScrollView != null)
             {
-                foreach (var candidate in candidates.Where(candidate => candidate != null))
-                {
-                    var sourcePath = NormalizeFilePath(candidate.SourcePath);
-                    if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
-                    {
-                        continue;
-                    }
+                ProcessUnityPackageImportedAmri(snapshot, tabScrollView, root);
+            }
 
-                    _pendingBlmAmriCandidates.Add(new AmriImportCandidate
-                    {
-                        SourcePath = sourcePath,
-                        DisplayPath = candidate.DisplayPath,
-                        Status = AmriImportCandidateStatus.Warning
-                    });
+            if (candidates != null && tabScrollView != null)
+            {
+                var amriPaths = candidates
+                    .Where(candidate => candidate != null && !string.IsNullOrWhiteSpace(candidate.SourcePath))
+                    .Select(candidate => NormalizeFilePath(candidate.SourcePath))
+                    .Where(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                if (amriPaths.Count > 0)
+                {
+                    ImportSingleAmriFiles(amriPaths, tabScrollView, root);
                 }
             }
 
-            if (_pendingBlmAmriCandidates.Count == 0)
-            {
-                ClearBlmFlowState();
-                return;
-            }
-
-            ContinueBlmAmriFlowAfterSuccessfulBatch();
+            ClearBlmFlowState();
+            UpdateImportInProgressOverlayVisibility();
         }
 
         private void OnBlmImportFailed(AmariBlmImportFailureContext failure)
         {
+            _preBlmAmriSnapshot = null;
             if (failure == null)
             {
+                return;
+            }
+
+            if (failure.ImportStatus == AmariUnityPackagePipelineOperationStatus.Cancelled &&
+                failure.CancellationReason == AmariUnityPackageImportCancellationReason.WindowClosedFallback)
+            {
+                // OnPipelineImportRequestFinalizedForOverlay で既にキャンセル処理済み
+                ClearBlmFlowState();
+                UpdateImportInProgressOverlayVisibility();
                 return;
             }
 
@@ -467,126 +490,48 @@ namespace com.amari_noa.avatar_modular_assistant.editor
                 ErrorMessage = failure.ErrorMessage ?? string.Empty
             };
 
+            ClearBlmFlowState();
             ShowImportFailureDialog(
                 LocalizeStatusText(failure.ImportStatus),
                 BuildLocalizedDirectImportReasonMessage(directFailure),
                 failure.FailedSourcePaths);
-            ClearBlmFlowState();
-        }
-
-        private void ContinueBlmAmriFlowAfterSuccessfulBatch()
-        {
-            if (_pendingBlmAmriCandidates.Count == 0)
-            {
-                ClearBlmFlowState();
-                return;
-            }
-
-            foreach (var candidate in _pendingBlmAmriCandidates)
-            {
-                candidate.Status = EvaluateAmriCandidateStatus(candidate.SourcePath);
-            }
-
-            OpenBlmAmriSelectionModal(_activeBlmBatchId, _pendingBlmAmriCandidates);
+            UpdateImportInProgressOverlayVisibility();
         }
 
         private void ClearBlmFlowState()
         {
-            _isBlmModalOpen = false;
+            _preBlmAmriSnapshot = null;
+            _isBlmImportQueueStarting = false;
             _activeBlmBatchId = string.Empty;
-            _pendingBlmAmriCandidates.Clear();
         }
 
-        private void OpenBlmAmriSelectionModal(string batchId, IReadOnlyList<AmriImportCandidate> candidates)
+        private void OnBlmBatchRequestReceived(string batchId)
         {
-            if (_isBlmModalOpen || candidates == null || candidates.Count == 0)
-            {
-                return;
-            }
-
-            var modalItems = candidates
-                .Where(candidate => candidate != null)
-                .Select(candidate => new AmariBlmAmriSelectionWindow.AmriModalItem
-                {
-                    SourcePath = candidate.SourcePath,
-                    DisplayPath = candidate.DisplayPath,
-                    Status = candidate.Status switch
-                    {
-                        AmriImportCandidateStatus.Info => AmariBlmAmriSelectionWindow.AmriModalItemStatus.Info,
-                        AmriImportCandidateStatus.Warning => AmariBlmAmriSelectionWindow.AmriModalItemStatus.Warning,
-                        _ => AmariBlmAmriSelectionWindow.AmriModalItemStatus.Critical
-                    }
-                })
-                .ToList();
-
-            _isBlmModalOpen = true;
-            AmariBlmAmriSelectionWindow.Open(
-                batchId,
-                modalItems,
-                Localize,
-                (shouldImportSelected, selectedPaths) =>
-                {
-                    _isBlmModalOpen = false;
-                    if (shouldImportSelected && selectedPaths != null && selectedPaths.Count > 0)
-                    {
-                        ImportAmriFiles(selectedPaths);
-                    }
-
-                    ClearBlmFlowState();
-                });
+            _ = batchId;
+            _isBlmImportQueueStarting = true;
+            UpdateImportInProgressOverlayVisibility();
         }
 
-        private void ImportAmriFiles(IEnumerable<string> amriPaths)
+        private void OnBlmBatchExecutionStarting(string batchId)
         {
-            if (_avatarSettings?.ItemListGroupItems == null || amriPaths == null)
+            _isBlmImportQueueStarting = false;
+            _activeBlmBatchId = batchId ?? string.Empty;
+            _importSuccessCount = 0;
+            UpdateImportInProgressOverlayVisibility();
+        }
+
+        private static void ShowImportSuccessDialog(int count)
+        {
+            if (count <= 0)
             {
                 return;
             }
 
-            var root = rootVisualElement;
-            if (root == null)
-            {
-                return;
-            }
-
-            var tabScrollView = root.Q<ScrollView>("ItemGroupTabListView");
-            if (tabScrollView == null)
-            {
-                Debug.LogWarning("[AMARI] ItemGroupTabListView not found.");
-                return;
-            }
-
-            var uniquePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var path in amriPaths)
-            {
-                var normalizedPath = NormalizeFilePath(path);
-                if (string.IsNullOrWhiteSpace(normalizedPath) || !uniquePaths.Add(normalizedPath))
-                {
-                    continue;
-                }
-
-                if (!File.Exists(normalizedPath))
-                {
-                    Debug.LogWarning($"[AMARI] .amri file not found: {normalizedPath}");
-                    continue;
-                }
-
-                try
-                {
-                    var json = File.ReadAllText(normalizedPath, Encoding.UTF8);
-                    if (!TryParseImportedItemGroupJson(json, out var imported, out var parseError))
-                    {
-                        Debug.LogError($"[AMARI] Failed to import item group ({normalizedPath}): {parseError}");
-                        continue;
-                    }
-
-                    ImportItemGroup(imported, tabScrollView, root);
-                }
-                catch (Exception ex)
-                {
-                    Debug.LogError($"[AMARI] Failed to import item group ({normalizedPath}): {ex.Message}");
-                }
-            }
+            var title = L("amari.window.avatarCustomize.import.success.title", "Import Complete");
+            var message = string.Format(
+                L("amari.window.avatarCustomize.import.success.message", "{0} file(s) were imported successfully."),
+                count);
+            EditorUtility.DisplayDialog(title, message, "OK");
         }
 
         private AmriImportCandidateStatus EvaluateAmriCandidateStatus(string sourcePath)
@@ -752,65 +697,21 @@ namespace com.amari_noa.avatar_modular_assistant.editor
 
         private static IReadOnlyList<string> OpenImportFileDialog()
         {
-#if UNITY_EDITOR_WIN
-            var dialogType = Type.GetType("System.Windows.Forms.OpenFileDialog, System.Windows.Forms");
-            var dialogResultType = Type.GetType("System.Windows.Forms.DialogResult, System.Windows.Forms");
-            if (dialogType == null || dialogResultType == null)
+            var title = L("amari.window.avatarCustomize.importUnityPackageButton", "Import unitypackage");
+            var filters = new[]
             {
-                Debug.LogError("[AMARI] System.Windows.Forms.OpenFileDialog is unavailable.");
+                "UnityPackage / AMRI", "unitypackage,amri",
+                "UnityPackage", "unitypackage",
+                "AMRI", "amri"
+            };
+
+            var selectedPath = EditorUtility.OpenFilePanelWithFilters(title, Application.dataPath, filters);
+            if (string.IsNullOrWhiteSpace(selectedPath))
+            {
                 return Array.Empty<string>();
             }
 
-            object dialog = null;
-            try
-            {
-                dialog = Activator.CreateInstance(dialogType);
-                SetObjectProperty(dialogType, dialog, "Title", L("amari.window.avatarCustomize.importUnityPackageButton", "Import unitypackage"));
-                SetObjectProperty(dialogType, dialog, "Filter", "UnityPackage / AMRI (*.unitypackage;*.amri)|*.unitypackage;*.amri|UnityPackage (*.unitypackage)|*.unitypackage|AMRI (*.amri)|*.amri");
-                SetObjectProperty(dialogType, dialog, "Multiselect", true);
-                SetObjectProperty(dialogType, dialog, "CheckFileExists", true);
-                SetObjectProperty(dialogType, dialog, "RestoreDirectory", true);
-
-                var result = dialogType.GetMethod("ShowDialog", Type.EmptyTypes)?.Invoke(dialog, null);
-                var okValue = Enum.Parse(dialogResultType, "OK");
-                if (!Equals(result, okValue))
-                {
-                    return Array.Empty<string>();
-                }
-
-                var fileNames = dialogType.GetProperty("FileNames", BindingFlags.Public | BindingFlags.Instance)
-                    ?.GetValue(dialog) as string[];
-                return fileNames?
-                    .Where(path => !string.IsNullOrWhiteSpace(path))
-                    .ToArray() ?? Array.Empty<string>();
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"[AMARI] Failed to open import file dialog: {ex.Message}");
-                return Array.Empty<string>();
-            }
-            finally
-            {
-                if (dialog is IDisposable disposable)
-                {
-                    disposable.Dispose();
-                }
-            }
-#else
-            Debug.LogWarning("[AMARI] Multi-file import dialog is supported only on Windows Editor.");
-            return Array.Empty<string>();
-#endif
-        }
-
-        private static void SetObjectProperty(Type type, object instance, string propertyName, object value)
-        {
-            var property = type.GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
-            if (property == null || !property.CanWrite)
-            {
-                return;
-            }
-
-            property.SetValue(instance, value);
+            return new[] { selectedPath };
         }
 
         private static void ResetUnityPackagePipelineIfBusy(IAmariUnityPackageImportPipelineService pipeline)

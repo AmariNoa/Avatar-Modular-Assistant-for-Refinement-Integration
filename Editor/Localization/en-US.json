@@ -8,6 +8,10 @@
         "importUnityPackageButton": "Import unitypackage",
         "importBlmButton": "Import file(s) from BOOTH Library Manager",
         "import": {
+          "success": {
+            "title": "Import Complete",
+            "message": "{0} file(s) were imported successfully."
+          },
           "failure": {
             "title": "Import Failed",
             "summary": "One or more imports failed.",
@@ -30,17 +34,52 @@
             }
           }
         },
-        "blm": {
-          "amri_modal": {
-            "title": "AMRI Import Confirmation",
-            "header_format": "Batch: {0} / {1} file(s)",
-            "import_selected": "Import Selected",
+        "importInProgress": {
+          "message": "Importing..."
+        },
+        "amri_apply": {
+          "title": "AMRI Apply Selection",
+          "header_format": "{0} amri file(s) imported. Select which to apply to the current avatar.",
+          "select_all": "Select All",
+          "deselect_all": "Deselect All",
+          "cancel": "Cancel",
+          "apply": "Apply",
+          "status_info": "Ready",
+          "status_warning": "Partial",
+          "status_critical": "Issues"
+        },
+        "amriImport": {
+          "duplicateBatch": {
+            "title": "AMRI Import: Duplicate Files",
+            "message": "{0} file(s) already exist at the destination path. How would you like to proceed?",
+            "overwriteAll": "Overwrite All",
+            "skipAll": "Skip All",
+            "individual": "Choose Individually"
+          },
+          "duplicateItem": {
+            "title": "AMRI Import: Duplicate File",
+            "message": "A file already exists at:\n{0}\n\nWhat would you like to do?",
+            "overwrite": "Overwrite",
             "skip": "Skip",
-            "select_all": "Select All",
-            "deselect_all": "Deselect All",
-            "status_info": "Imported",
-            "status_warning": "Partially Imported",
-            "status_critical": "Not Imported"
+            "cancelAll": "Cancel All"
+          },
+          "unmanagedMoveBatch": {
+            "title": "AMRI Import: Move to Managed Folder?",
+            "message": "{0} amri file(s) were placed outside of Assets/_AMARI_DATA/Items/.\nMove them into the managed folder?",
+            "moveAll": "Move All",
+            "keepAll": "Keep All",
+            "individual": "Choose Individually"
+          },
+          "unmanagedMoveItem": {
+            "title": "AMRI Import: Move This File?",
+            "message": "Move the following file into the managed folder?\n{0}",
+            "move": "Move",
+            "keep": "Keep",
+            "cancelAll": "Cancel All"
+          },
+          "broken": {
+            "title": "AMRI Import: Broken Files",
+            "message": "The following amri files could not be parsed and were skipped:"
           }
         },
         "includeInBuildTitle": "Include In Build",
