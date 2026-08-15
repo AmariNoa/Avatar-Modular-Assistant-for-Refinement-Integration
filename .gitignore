@@ -106,3 +106,9 @@ COPYING.md.meta
 # Othr files
 /Spec/*
 Spec.meta
+
+# AI agent local files (rules and session records, kept out of the repository)
+/AGENTS.md
+/AGENTS.md.meta
+/CLAUDE.md
+/CLAUDE.md.meta
