@@ -1,7 +1,7 @@
 {
   "name": "com.amari-noa.avatar-modular-assistant",
   "displayName": "Avatar Modular Assistant for Refinement & Integration",
-  "version": "0.1.0-alpha.4",
+  "version": "0.1.0-alpha.5",
   "unity": "2022.3",
   "description": "A modular avatar editing assistant for VRChat, designed to modify items and components as independent modules.",
   "author": {
